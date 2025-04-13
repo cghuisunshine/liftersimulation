@@ -150,18 +150,20 @@
       const container = document.getElementById('lifterContainer');
       container.innerHTML = '';
       
+      // Initialize lifters in reverse order
       lifters = Array(NUM_LIFTERS).fill().map((_, i) => {
+        const reversedIndex = NUM_LIFTERS - 1 - i;
         const lifter = document.createElement('div');
         lifter.className = 'lifter';
         lifter.innerHTML = `
-          <div class="platform" id="platform-${i}"></div>
+          <div class="platform" id="platform-${reversedIndex}"></div>
           <div class="base"></div>
         `;
         container.appendChild(lifter);
         
         return {
-          id: i,
-          element: document.getElementById(`platform-${i}`),
+          id: reversedIndex,
+          element: document.getElementById(`platform-${reversedIndex}`),
           currentFloor: 1,
           destination: null,
           passengers: 0,
