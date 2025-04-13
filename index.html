@@ -54,8 +54,17 @@
     .person.in-lifter {
       position: absolute;
       transition: all 0.3s ease;
-      z-index: 10;
+      z-index: 100;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
+    
+    .lifter {
+      z-index: 1;
+      overflow: visible;
+    }
+    
+    .platform {
+      z-index: 2;
     }
 
     .floor-stats {
@@ -231,13 +240,17 @@
           const row = Math.floor(this.element.dataset.personIndex / 4);
           const col = this.element.dataset.personIndex % 4;
           
-          // Position relative to the lifter's platform
-          const lifterElement = document.getElementById(`platform-${lifter.id}`).parentNode;
-          const lifterRect = lifterElement.getBoundingClientRect();
+          // Position relative to the lifter container
+          const lifterContainer = document.getElementById(`platform-${lifter.id}`).parentNode;
+          const containerRect = lifterContainer.getBoundingClientRect();
           
-          this.element.style.left = `${20 + col * 15}px`;
-          this.element.style.bottom = `${floorHeights[lifter.currentFloor] + 20 + row * 20}px`;
-          this.element.style.zIndex = 100 + row; // Ensure people appear above platform
+          // Calculate positions within the lifter
+          const leftPos = 20 + col * 15;
+          const bottomPos = 20 + row * 20;
+          
+          this.element.style.left = `${leftPos}px`;
+          this.element.style.bottom = `${bottomPos}px`;
+          this.element.style.zIndex = 10 + row;
         }
       }
     }
