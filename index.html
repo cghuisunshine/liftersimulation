@@ -138,8 +138,8 @@
     const NUM_LIFTERS = 8; // Reduced from 15 to make more visible activity
     const NUM_FLOORS = 3;
     const SIMULATION_DURATION = 5000; // ms
-    const PERSON_SPAWN_RATE = 10; // Faster spawn rate (was 20ms)
-    const TOTAL_PEOPLE = 1000; // Increased total people
+    const PERSON_SPAWN_RATE = 3; // Much faster spawn rate (3x more people)
+    const TOTAL_PEOPLE = 3000; // Triple the total people
 
     // State
     let lifters = [];
@@ -300,6 +300,7 @@
         lifter.destination = person.destinationFloor;
         lifter.passengers++;
         totalLifts++;
+        console.log(`Assigned person to lifter ${lifter.id} (now has ${lifter.passengers} passengers)`);
         
         // Move lifter
         setTimeout(() => {
@@ -340,6 +341,7 @@
           
           lifter.destination = floor + 1;
           moveLifter(lifter, floor + 1);
+          console.log(`Moved empty lifter ${lifter.id} to floor ${floor + 1}`);
           
           // Assign people immediately if possible
           const floorQueue = peopleWaiting[floor];
