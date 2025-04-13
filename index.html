@@ -180,9 +180,10 @@
     class Person {
       constructor() {
         this.startFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
-        do {
-          this.destinationFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
-        } while (this.destinationFloor === this.startFloor);
+        // Generate destination floor that's different from start floor
+        const possibleFloors = Array.from({length: NUM_FLOORS}, (_, i) => i + 1)
+          .filter(floor => floor !== this.startFloor);
+        this.destinationFloor = possibleFloors[Math.floor(Math.random() * possibleFloors.length)];
         this.waitStart = Date.now();
         this.lifterId = null;
         
