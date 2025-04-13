@@ -51,7 +51,15 @@
       bottom: 20px;
     }
 
-    //explain below code, AI!
+    /* 
+      PASSENGER VISUAL STYLING WHEN INSIDE ELEVATOR:
+      - Relative positioning for proper stacking context
+      - Smooth transitions for all animatable properties
+      - Subtle shadow for depth perception
+      - Hardware-accelerated transforms (translateZ hack)
+      - Inline-block display for proper element sizing
+      - Small margin between passengers
+    */
     .person.in-lifter {
       position: relative;
       transition: all 0.3s ease;
