@@ -53,8 +53,9 @@
 
     .person.in-lifter {
       position: absolute;
-      left: 20px;
-      transition: bottom 0.5s ease-in-out;
+      transition: all 0.3s ease;
+      z-index: 10;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
 
     .floor-stats {
@@ -220,8 +221,14 @@
           this.element.classList.remove('waiting');
           this.element.classList.add('in-lifter');
           this.element.dataset.lifterId = this.lifterId;
-          this.element.style.left = `${20 + (this.element.dataset.personIndex % 4) * 15}px`;
-          this.element.style.bottom = `${floorHeights[this.startFloor] + 20 + Math.floor(this.element.dataset.personIndex / 4) * 20}px`;
+          
+          // Position people in a grid inside the lifter
+          const lifter = lifters[this.lifterId];
+          const row = Math.floor(this.element.dataset.personIndex / 4);
+          const col = this.element.dataset.personIndex % 4;
+          
+          this.element.style.left = `${20 + col * 15}px`;
+          this.element.style.bottom = `${floorHeights[lifter.currentFloor] + 20 + row * 20}px`;
         }
       }
     }
