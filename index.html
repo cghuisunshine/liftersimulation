@@ -52,11 +52,23 @@
     }
 
     .person.in-lifter {
-      position: absolute;
+      position: relative;
       transition: all 0.3s ease;
-      z-index: 100;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
       transform: translateZ(0); /* Force hardware acceleration */
+      display: inline-block;
+      margin: 2px;
+    }
+    
+    .lifter-passengers {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
     }
     
     .lifter {
@@ -168,7 +180,9 @@
         const lifter = document.createElement('div');
         lifter.className = 'lifter';
         lifter.innerHTML = `
-          <div class="platform" id="platform-${reversedIndex}"></div>
+          <div class="platform" id="platform-${reversedIndex}">
+            <div class="lifter-passengers"></div>
+          </div>
           <div class="base"></div>
         `;
         container.appendChild(lifter);
@@ -177,8 +191,8 @@
           id: reversedIndex,
           element: document.getElementById(`platform-${reversedIndex}`),
           currentFloor: 1,
-          destination: null,
-          passengers: 0,
+          destinations: [],
+          passengers: [],
           maxCapacity: 10
         };
       });
@@ -195,13 +209,32 @@
     function moveLifter(lifter, floor) {
       lifter.element.style.bottom = floorHeights[floor] + 'px';
       lifter.currentFloor = floor;
+    }
+
+    function processDestinations(lifter) {
+      if (lifter.destinations.length === 0) return;
       
-      // Move all passengers with the lifter
-      document.querySelectorAll('.person.in-lifter').forEach(person => {
-        if (person.dataset.lifterId == lifter.id) {
-          person.style.bottom = `${floorHeights[floor] + 20}px`;
-        }
-      });
+      const nextFloor = lifter.destinations[0];
+      moveLifter(lifter, nextFloor);
+      
+      setTimeout(() => {
+        // Unload passengers for this floor
+        lifter.passengers = lifter.passengers.filter(p => {
+          if (p.destinationFloor === nextFloor) {
+            p.element.remove();
+            peopleTransported++;
+            floorStats[p.destinationFloor - 1].arrived++;
+            return false;
+          }
+          return true;
+        });
+        
+        // Remove processed destination and continue
+        lifter.destinations.shift();
+        processDestinations(lifter);
+        updateStats();
+        updateFloorStats();
+      }, 1000);
     }
 
     // Person class
@@ -213,6 +246,7 @@
           .filter(floor => floor !== this.startFloor);
         this.destinationFloor = possibleFloors[Math.floor(Math.random() * possibleFloors.length)];
         this.waitStart = Date.now();
+        this.boardingTime = null;
         this.lifterId = null;
         
         // Create visual element
