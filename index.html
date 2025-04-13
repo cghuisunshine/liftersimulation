@@ -146,7 +146,18 @@
     Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span>
   </div>
 
-  //explain layout below, AI!
+  <!-- 
+    LIFTER CONTAINER LAYOUT:
+    - Flexbox container holding all elevator cars
+    - Uses wrapping layout to handle multiple elevators
+    - 20px gap between elevators
+    - Centered horizontally with justify-content
+    - Initialized via initLifters() in JavaScript
+    - Each elevator (.lifter) contains:
+      * Moving platform (div.platform)
+      * Passenger area (div.lifter-passengers)
+      * Base element for visual styling
+  -->
   <div class="lifter-container" id="lifterContainer"></div>
 
   <script>
