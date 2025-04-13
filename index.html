@@ -245,19 +245,6 @@
       for (const lifter of availableLifters) {
         const floorQueue = peopleWaiting[lifter.currentFloor - 1];
         if (floorQueue.length === 0) continue;
-
-      // Then move empty lifters to floors with waiting people
-      if (availableLifters.some(l => l.passengers === 0)) {
-        for (let floor = 0; floor < NUM_FLOORS; floor++) {
-          if (peopleWaiting[floor].length > 0) {
-            const emptyLifter = availableLifters.find(l => l.passengers === 0);
-            if (emptyLifter) {
-              moveLifter(emptyLifter, floor + 1);
-              break;
-            }
-          }
-        }
-      }
         
         const person = floorQueue.shift();
         person.lifterId = lifter.id;
@@ -291,6 +278,19 @@
             updateStats();
           }, 1000);
         }, 500);
+      }
+
+      // Then move empty lifters to floors with waiting people
+      if (availableLifters.some(l => l.passengers === 0)) {
+        for (let floor = 0; floor < NUM_FLOORS; floor++) {
+          if (peopleWaiting[floor].length > 0) {
+            const emptyLifter = availableLifters.find(l => l.passengers === 0);
+            if (emptyLifter) {
+              moveLifter(emptyLifter, floor + 1);
+              break;
+            }
+          }
+        }
       }
     }
 
