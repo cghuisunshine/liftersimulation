@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .lifter-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin: 20px;
+    }
+
+    .lifter {
+      position: relative;
+      width: 80px;
+      height: 300px;
+      background-color: #444;
+      border-radius: 10px;
+    }
+
+    .platform {
+      position: absolute;
+      bottom: 60px;
+      left: -10px;
+      width: 100px;
+      height: 20px;
+      background-color: #888;
+      border-radius: 5px;
+      transition: bottom 0.5s ease-in-out;
+    }
+
+    .base {
+      position: absolute;
+      bottom: 0;
+      left: -5px;
+      width: 90px;
+      height: 40px;
+      background-color: #222;
+      border-radius: 10px;
+    }
+
+    .person {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .person.waiting {
+      bottom: 20px;
+    }
+
+    .person.in-lifter {
+      position: absolute;
+      left: 20px;
+      transition: bottom 0.5s ease-in-out;
+    }
+
+    .floor-stats {
+      position: absolute;
+      right: 20px;
+      background: rgba(255,255,255,0.8);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    .controls {
+      text-align: center;
+      margin: 20px;
+    }
+
+    .controls button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .stats {
+      margin: 20px;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button id="startBtn">Start Simulation</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div class="stats">
+    <div>People waiting: <span id="waitingCount">0</span></div>
+    <div>People transported: <span id="transportedCount">0</span></div>
+    <div>Average wait time: <span id="avgWaitTime">0</span>s</div>
+  </div>
+
+  <div class="floor-stats" style="top: 100px">
+    Floor 1: <span id="floor1Stats">0 arrived, 0 departed</span>
+  </div>
+  <div class="floor-stats" style="top: 180px">
+    Floor 2: <span id="floor2Stats">0 arrived, 0 departed</span>
+  </div>
+  <div class="floor-stats" style="top: 260px">
+    Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span>
+  </div>
+
+  <div class="lifter-container" id="lifterContainer"></div>
+
+  <script>
+    // Configuration
+    const NUM_LIFTERS = 8; // Reduced from 15 to make more visible activity
+    const NUM_FLOORS = 3;
+    const SIMULATION_DURATION = 5000; // ms
+    const PERSON_SPAWN_RATE = 10; // Faster spawn rate (was 20ms)
+    const TOTAL_PEOPLE = 1000; // Increased total people
+
+    // State
+    let lifters = [];
+    let peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
+    let peopleTransported = 0;
+    let totalLifts = 0;
+    let simulationInterval;
+    let spawnInterval;
+    let startTime;
+    let floorStats = Array(NUM_FLOORS).fill().map(() => ({
+      arrived: 0,
+      departed: 0
+    }));
+
+    // Initialize lifters
+    function initLifters() {
+      const container = document.getElementById('lifterContainer');
+      container.innerHTML = '';
+      
+      lifters = Array(NUM_LIFTERS).fill().map((_, i) => {
+        const lifter = document.createElement('div');
+        lifter.className = 'lifter';
+        lifter.innerHTML = `
+          <div class="platform" id="platform-${i}"></div>
+          <div class="base"></div>
+        `;
+        container.appendChild(lifter);
+        
+        return {
+          id: i,
+          element: document.getElementById(`platform-${i}`),
+          currentFloor: 1,
+          destination: null,
+          passengers: 0,
+          maxCapacity: 10
+        };
+      });
+    }
+
+    // Floor positions
+    const floorHeights = {
+      1: 60,
+      2: 140,
+      3: 220
+    };
+
+    // Move lifter to floor
+    function moveLifter(lifter, floor) {
+      lifter.element.style.bottom = floorHeights[floor] + 'px';
+      lifter.currentFloor = floor;
+      
+      // Move all passengers with the lifter
+      document.querySelectorAll('.person.in-lifter').forEach(person => {
+        if (person.dataset.lifterId == lifter.id) {
+          person.style.bottom = `${floorHeights[floor] + 20}px`;
+        }
+      });
+    }
+
+    // Person class
+    class Person {
+      constructor() {
+        this.startFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
+        do {
+          this.destinationFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
+        } while (this.destinationFloor === this.startFloor);
+        this.waitStart = Date.now();
+        this.lifterId = null;
+        
+        // Create visual element
+        this.element = document.createElement('div');
+        this.element.className = 'person';
+        this.element.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        this.element.style.left = `${Math.random() * 60 + 10}px`;
+        document.getElementById(`platform-${this.startFloor - 1}`).parentNode.appendChild(this.element);
+        
+        // Position at start floor
+        this.updatePosition('waiting');
+      }
+
+      updatePosition(state) {
+        if (state === 'waiting') {
+          this.element.classList.remove('in-lifter');
+          this.element.classList.add('waiting');
+          this.element.style.bottom = `${floorHeights[this.startFloor] - 20}px`;
+        } else if (state === 'in-lifter') {
+          this.element.classList.remove('waiting');
+          this.element.classList.add('in-lifter');
+          this.element.dataset.lifterId = this.lifterId;
+          this.element.style.left = `${20 + (this.element.dataset.personIndex % 4) * 15}px`;
+          this.element.style.bottom = `${floorHeights[this.startFloor] + 20 + Math.floor(this.element.dataset.personIndex / 4) * 20}px`;
+        }
+      }
+    }
+
+    // Spawn people
+    function spawnPeople() {
+      if (totalLifts >= TOTAL_PEOPLE) {
+        clearInterval(spawnInterval);
+        clearInterval(simulationInterval);
+        return;
+      }
+      
+      const person = new Person();
+      peopleWaiting[person.startFloor - 1].push(person);
+      floorStats[person.startFloor - 1].departed++;
+      updateFloorStats();
+      updateStats();
+    }
+
+    // Assign people to lifters
+    function assignPeople() {
+      if (totalLifts >= TOTAL_PEOPLE) {
+        clearInterval(spawnInterval);
+        clearInterval(simulationInterval);
+        return;
+      }
+
+      // Sort lifters by fewest passengers to distribute people more evenly
+      const availableLifters = lifters
+        .filter(l => l.passengers < l.maxCapacity)
+        .sort((a, b) => a.passengers - b.passengers);
+
+      for (const lifter of availableLifters) {
+        const floorQueue = peopleWaiting[lifter.currentFloor - 1];
+        if (floorQueue.length === 0) continue;
+        
+        const person = floorQueue.shift();
+        person.lifterId = lifter.id;
+        person.element.dataset.personIndex = lifter.passengers;
+        
+        // Animate person entering lifter
+        person.updatePosition('in-lifter');
+        
+        // Assign to lifter
+        lifter.destination = person.destinationFloor;
+        lifter.passengers++;
+        totalLifts++;
+        
+        // Move lifter
+        setTimeout(() => {
+          moveLifter(lifter, lifter.destination);
+          setTimeout(() => {
+            // Drop off passenger
+            lifter.destination = null;
+            lifter.passengers--;
+            peopleTransported++;
+            
+            // Update floor stats
+            floorStats[person.destinationFloor - 1].arrived++;
+            updateFloorStats();
+            
+            // Keep person visible at destination floor briefly
+            person.element.style.bottom = `${floorHeights[person.destinationFloor] - 20}px`;
+            setTimeout(() => person.element.remove(), 1000);
+            
+            updateStats();
+          }, 1000);
+        }, 500);
+      }
+    }
+
+    // Update statistics
+    function updateStats() {
+      const totalWaiting = peopleWaiting.reduce((sum, queue) => sum + queue.length, 0);
+      document.getElementById('waitingCount').textContent = totalWaiting;
+      document.getElementById('transportedCount').textContent = peopleTransported;
+      
+      if (peopleTransported > 0) {
+        const allWaiting = peopleWaiting.flat();
+        const avgWait = allWaiting.reduce((sum, p) => 
+          sum + (Date.now() - p.waitStart), 0) / peopleTransported / 1000;
+        document.getElementById('avgWaitTime').textContent = avgWait.toFixed(1);
+      }
+    }
+
+    // Update floor statistics
+    function updateFloorStats() {
+      for (let i = 0; i < NUM_FLOORS; i++) {
+        document.getElementById(`floor${i+1}Stats`).textContent = 
+          `${floorStats[i].arrived} arrived, ${floorStats[i].departed} departed`;
+      }
+    }
+
+    // Start simulation
+    function startSimulation() {
+      initLifters();
+      peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
+      peopleTransported = 0;
+      totalLifts = 0;
+      floorStats = Array(NUM_FLOORS).fill().map(() => ({
+        arrived: 0,
+        departed: 0
+      }));
+      startTime = Date.now();
+      
+      spawnInterval = setInterval(spawnPeople, PERSON_SPAWN_RATE);
+      simulationInterval = setInterval(assignPeople, 100);
+    }
+
+    // Reset simulation
+    function resetSimulation() {
+      clearInterval(simulationInterval);
+      clearInterval(spawnInterval);
+      initLifters();
+      peopleWaiting = [];
+      peopleTransported = 0;
+      floorStats = Array(NUM_FLOORS).fill().map(() => ({
+        arrived: 0,
+        departed: 0
+      }));
+      updateStats();
+      updateFloorStats();
+    }
+
+    // Event listeners
+    document.getElementById('startBtn').addEventListener('click', startSimulation);
+    document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+
+    // Initialize
+    initLifters();
+  </script>
+</body>
+</html>
