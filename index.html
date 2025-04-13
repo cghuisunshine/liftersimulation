@@ -84,6 +84,18 @@
       background: #f0f0f0;
       border-radius: 5px;
     }
+    .lifter-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px;
+    }
+    .lifter-stat {
+      padding: 5px 10px;
+      background: #e0e0e0;
+      border-radius: 5px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -97,6 +109,7 @@
     <div>People transported: <span id="transportedCount">0</span></div>
     <div>Average wait time: <span id="avgWaitTime">0</span>s</div>
   </div>
+  <div class="lifter-stats" id="lifterStats"></div>
 
   <div class="floor-stats" style="top: 100px">
     Floor 1: <span id="floor1Stats">0 arrived, 0 departed</span>
@@ -226,6 +239,7 @@
       floorStats[person.startFloor - 1].departed++;
       updateFloorStats();
       updateStats();
+      updateLifterStats();
     }
 
     // Assign people to lifters
@@ -286,20 +300,46 @@
       // Then move empty lifters to floors with waiting people
       const emptyLifters = availableLifters.filter(l => l.passengers === 0);
       if (emptyLifters.length > 0) {
-        for (let floor = 0; floor < NUM_FLOORS; floor++) {
-          if (peopleWaiting[floor].length > 0) {
-            const lifter = emptyLifters.shift();
-            if (lifter) {
-              lifter.destination = floor + 1;
-              moveLifter(lifter, floor + 1);
-            }
-            if (emptyLifters.length === 0) break;
+        // Find floors with most waiting people first
+        const floorsByDemand = [...Array(NUM_FLOORS).keys()]
+          .filter(floor => peopleWaiting[floor].length > 0)
+          .sort((a, b) => peopleWaiting[b].length - peopleWaiting[a].length);
+        
+        for (const floor of floorsByDemand) {
+          const lifter = emptyLifters.shift();
+          if (!lifter) break;
+          
+          lifter.destination = floor + 1;
+          moveLifter(lifter, floor + 1);
+          
+          // Assign people immediately if possible
+          const floorQueue = peopleWaiting[floor];
+          while (floorQueue.length > 0 && lifter.passengers < lifter.maxCapacity) {
+            const person = floorQueue.shift();
+            person.lifterId = lifter.id;
+            person.element.dataset.personIndex = lifter.passengers;
+            person.updatePosition('in-lifter');
+            lifter.destination = person.destinationFloor;
+            lifter.passengers++;
+            totalLifts++;
           }
         }
       }
     }
 
     // Update statistics
+    function updateLifterStats() {
+      const container = document.getElementById('lifterStats');
+      container.innerHTML = '';
+      
+      lifters.forEach((lifter, i) => {
+        const stat = document.createElement('div');
+        stat.className = 'lifter-stat';
+        stat.textContent = `Lifter ${i+1}: Floor ${lifter.currentFloor}, Passengers: ${lifter.passengers}, Dest: ${lifter.destination || '-'}`;
+        container.appendChild(stat);
+      });
+    }
+
     function updateStats() {
       const totalWaiting = peopleWaiting.reduce((sum, queue) => sum + queue.length, 0);
       document.getElementById('waitingCount').textContent = totalWaiting;
