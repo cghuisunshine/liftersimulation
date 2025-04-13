@@ -263,9 +263,12 @@
           moveLifter(lifter, lifter.destination);
           setTimeout(() => {
             // Drop off passenger
-            lifter.destination = null;
             lifter.passengers--;
             peopleTransported++;
+            // Only clear destination if no more passengers
+            if (lifter.passengers === 0) {
+              lifter.destination = null;
+            }
             
             // Update floor stats
             floorStats[person.destinationFloor - 1].arrived++;
@@ -281,14 +284,16 @@
       }
 
       // Then move empty lifters to floors with waiting people
-      if (availableLifters.some(l => l.passengers === 0)) {
+      const emptyLifters = availableLifters.filter(l => l.passengers === 0);
+      if (emptyLifters.length > 0) {
         for (let floor = 0; floor < NUM_FLOORS; floor++) {
           if (peopleWaiting[floor].length > 0) {
-            const emptyLifter = availableLifters.find(l => l.passengers === 0);
-            if (emptyLifter) {
-              moveLifter(emptyLifter, floor + 1);
-              break;
+            const lifter = emptyLifters.shift();
+            if (lifter) {
+              lifter.destination = floor + 1;
+              moveLifter(lifter, floor + 1);
             }
+            if (emptyLifters.length === 0) break;
           }
         }
       }
