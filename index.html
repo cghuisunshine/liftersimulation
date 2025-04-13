@@ -223,12 +223,19 @@
           this.element.dataset.lifterId = this.lifterId;
           
           // Position people in a grid inside the lifter
-          const lifter = lifters[this.lifterId];
+          const lifter = lifters.find(l => l.id === this.lifterId);
+          if (!lifter) return;
+          
           const row = Math.floor(this.element.dataset.personIndex / 4);
           const col = this.element.dataset.personIndex % 4;
           
+          // Position relative to the lifter's platform
+          const lifterElement = document.getElementById(`platform-${lifter.id}`).parentNode;
+          const lifterRect = lifterElement.getBoundingClientRect();
+          
           this.element.style.left = `${20 + col * 15}px`;
           this.element.style.bottom = `${floorHeights[lifter.currentFloor] + 20 + row * 20}px`;
+          this.element.style.zIndex = 100 + row; // Ensure people appear above platform
         }
       }
     }
