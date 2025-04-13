@@ -56,11 +56,14 @@
       transition: all 0.3s ease;
       z-index: 100;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      transform: translateZ(0); /* Force hardware acceleration */
     }
     
     .lifter {
       z-index: 1;
       overflow: visible;
+      position: relative;
+      transform-style: preserve-3d;
     }
     
     .platform {
@@ -217,7 +220,11 @@
         this.element.className = 'person';
         this.element.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
         this.element.style.left = `${Math.random() * 60 + 10}px`;
-        document.getElementById(`platform-${this.startFloor - 1}`).parentNode.appendChild(this.element);
+        // Append to the specific lifter container
+        const lifterContainer = document.getElementById(`platform-${this.startFloor - 1}`).parentNode;
+        lifterContainer.appendChild(this.element);
+        this.element.style.position = 'absolute';
+        this.element.style.zIndex = '100';
         
         // Position at start floor
         this.updatePosition('waiting');
