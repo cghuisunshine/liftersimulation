@@ -401,7 +401,13 @@
         this.waitStart = Date.now();
         this.element = document.createElement('div');
         this.element.className = 'person waiting';
-        this.element.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        // Set color based on destination floor
+        const colors = {
+          1: 'hsl(0, 70%, 60%)',   // Red for Floor 1
+          2: 'hsl(120, 70%, 60%)', // Green for Floor 2
+          3: 'hsl(240, 70%, 60%)'  // Blue for Floor 3
+        };
+        this.element.style.backgroundColor = colors[this.destinationFloor];
         this.element.style.zIndex = '100';
       }
 
