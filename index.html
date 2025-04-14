@@ -349,7 +349,7 @@
 
     // Handle boarding and deboarding with animations
     function processBoarding(lifter) {
-      // First deboard passengers for current floor
+      // First deboard passengers for current floor only
       const deboarding = lifter.passengers.filter(p => p.destinationFloor === lifter.currentFloor);
       let deboardIndex = 0;
       let boardIndex = 0;
@@ -375,6 +375,13 @@
       function animateDeboarding() {
         if (deboardIndex < deboarding.length) {
           const p = deboarding[deboardIndex];
+          // Double-check that we're only deboarding at the correct floor
+          if (p.destinationFloor !== lifter.currentFloor) {
+            console.error("Error: Attempting to deboard passenger at wrong floor", p, lifter);
+            deboardIndex++;
+            animateDeboarding();
+            return;
+          }
           const waitTime = Date.now() - p.waitStart;
           totalWaitTime += waitTime;
           p.element.classList.add('deboarding');
