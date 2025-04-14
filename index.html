@@ -395,9 +395,11 @@
     class Person {
       constructor() {
         this.startFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
-        const possibleFloors = Array.from({length: NUM_FLOORS}, (_, i) => i + 1)
-          .filter(floor => floor !== this.startFloor);
-        this.destinationFloor = possibleFloors[Math.floor(Math.random() * possibleFloors.length)];
+        let destinationFloor = this.startFloor;
+        while (destinationFloor === this.startFloor) {
+          destinationFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
+        }
+        this.destinationFloor = destinationFloor;
         this.waitStart = Date.now();
         this.element = document.createElement('div');
         this.element.className = 'person waiting';
