@@ -347,13 +347,18 @@
       lifter.targetFloor = floor;
       lifter.element.style.bottom = floorHeights[floor] + 'px';
       
+      // Update floor indicator to show transition
+      if (floor !== lifter.currentFloor) {
+        document.getElementById(`floor-indicator-${lifter.id}`).textContent = `${lifter.currentFloor}->${floor}`;
+      }
+      
       // Calculate travel time based on number of floors
       const floorsToTravel = Math.abs(floor - lifter.currentFloor);
       const travelTime = floorsToTravel * FLOOR_TRAVEL_TIME;
       
       lifter.stateTimer = setTimeout(() => {
         lifter.currentFloor = floor;
-        // Update floor indicator
+        // Update floor indicator to show final floor
         document.getElementById(`floor-indicator-${lifter.id}`).textContent = floor;
         lifter.state = 'doors_opening';
         lifter.stateTimer = setTimeout(() => {
