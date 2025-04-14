@@ -1,56 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Elevator Simulation</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .instructions {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
+      font-size: 14px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+    }
     .lifter-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
+      gap: 30px;
       justify-content: center;
       margin: 20px;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-
     .lifter {
       position: relative;
-      width: 80px;
-      height: 300px;
-      background-color: #444;
+      width: 100px;
+      height: 320px;
+      background-color: #555;
       border-radius: 10px;
+      border: 2px solid #333;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-
     .platform {
       position: absolute;
       bottom: 60px;
       left: -10px;
-      width: 100px;
-      height: 20px;
-      background-color: #888;
+      width: 120px;
+      height: 25px;
+      background-color: #999;
       border-radius: 5px;
       transition: bottom 0.5s ease-in-out;
+      border: 1px solid #666;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-
     .base {
       position: absolute;
       bottom: 0;
       left: -5px;
-      width: 90px;
-      height: 40px;
-      background-color: #222;
+      width: 110px;
+      height: 45px;
+      background-color: #333;
       border-radius: 10px;
+      border: 1px solid #222;
     }
-
     .person {
       position: absolute;
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       transition: all 0.3s ease;
+      border: 1px solid rgba(0,0,0,0.3);
     }
-
     .person.waiting {
       bottom: 20px;
     }
-
     .person.in-lifter {
       position: relative;
       transition: all 0.3s ease;
@@ -59,7 +89,6 @@
       display: inline-block;
       margin: 2px;
     }
-    
     .lifter-passengers {
       position: absolute;
       bottom: 10px;
@@ -70,110 +99,144 @@
       justify-content: center;
       gap: 5px;
     }
-    
     .lifter {
       z-index: 1;
       overflow: visible;
       position: relative;
       transform-style: preserve-3d;
     }
-    
     .platform {
       z-index: 2;
     }
-
     .floor-stats {
       position: absolute;
       right: 20px;
-      background: rgba(255,255,255,0.8);
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 12px;
+      background: rgba(255,255,255,0.9);
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border: 1px solid #ddd;
     }
-
     .floor-line {
       position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background-color: #666;
+      left: 20px;
+      right: 20px;
+      height: 3px;
+      background-color: #555;
       z-index: 0;
+      border-radius: 2px;
     }
-
     .floor-label {
       position: absolute;
-      left: 10px;
-      font-size: 14px;
-      color: #333;
+      left: 30px;
+      font-size: 16px;
+      font-weight: bold;
+      background: rgba(255,255,255,0.9);
+      padding: 0 5px;
+      border-radius: 3px;
     }
-
     .controls {
       text-align: center;
       margin: 20px;
     }
-
     .controls button {
-      padding: 10px 20px;
-      margin: 5px;
+      padding: 12px 25px;
+      margin: 5px 10px;
       font-size: 16px;
       cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
     }
-
+    .controls button:hover {
+      background-color: #45a049;
+    }
+    .controls button#resetBtn {
+      background-color: #f44336;
+    }
+    .controls button#resetBtn:hover {
+      background-color: #da190b;
+    }
     .stats {
       margin: 20px;
-      padding: 10px;
-      background: #f0f0f0;
-      border-radius: 5px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+    }
+    .stats div {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+    .stats span {
+      font-weight: normal;
+      color: #555;
     }
     .lifter-stats {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      justify-content: center;
+      gap: 15px;
       margin: 20px;
     }
     .lifter-stat {
-      padding: 5px 10px;
-      background: #e0e0e0;
+      padding: 8px 15px;
+      background: #fff;
       border-radius: 5px;
-      font-size: 12px;
+      font-size: 13px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border: 1px solid #ddd;
     }
   </style>
 </head>
 <body>
-  <div class="controls">
-    <button id="startBtn">Start Simulation</button>
-    <button id="resetBtn">Reset</button>
+  <h1>Elevator Simulation</h1>
+  <div class="instructions">
+    Watch how elevators operate in a building with multiple floors. People (colored dots) appear on different floors and request to go to other floors. The color of each person indicates their destination floor. Click "Start Simulation" to begin and "Reset" to clear the simulation.
   </div>
+  <div class="container">
+    <div class="controls">
+      <button id="startBtn">Start Simulation</button>
+      <button id="resetBtn">Reset</button>
+    </div>
 
-  <div class="stats">
-    <div>People waiting: <span id="waitingCount">0</span></div>
-    <div>People transported: <span id="transportedCount">0</span></div>
-    <div>Average wait time: <span id="avgWaitTime">0</span>s</div>
+    <div class="stats">
+      <div>People Waiting: <span id="waitingCount">0</span></div>
+      <div>People Transported: <span id="transportedCount">0</span></div>
+      <div>Average Wait Time: <span id="avgWaitTime">0</span>s</div>
+    </div>
+    <div class="lifter-stats" id="lifterStats"></div>
+
+    <div class="floor-stats" style="top: 100px">
+      Floor 1: <span id="floor1Stats">0 arrived, 0 departed</span>
+    </div>
+    <div class="floor-stats" style="top: 180px">
+      Floor 2: <span id="floor2Stats">0 arrived, 0 departed</span>
+    </div>
+    <div class="floor-stats" style="top: 260px">
+      Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span>
+    </div>
+
+    <div class="floor-line" style="bottom: 80px;"></div>
+    <div class="floor-label" style="bottom: 85px; color: hsl(0, 70%, 60%);">Floor 1</div>
+    <div class="floor-line" style="bottom: 160px;"></div>
+    <div class="floor-label" style="bottom: 165px; color: hsl(120, 70%, 60%);">Floor 2</div>
+    <div class="floor-line" style="bottom: 240px;"></div>
+    <div class="floor-label" style="bottom: 245px; color: hsl(240, 70%, 60%);">Floor 3</div>
+
+    <div class="floor-waiting" id="floor-waiting-1" style="position: absolute; bottom: 60px; right: 40px; width: 120px; height: 60px;"></div>
+    <div class="floor-waiting" id="floor-waiting-2" style="position: absolute; bottom: 140px; right: 40px; width: 120px; height: 60px;"></div>
+    <div class="floor-waiting" id="floor-waiting-3" style="position: absolute; bottom: 220px; right: 40px; width: 120px; height: 60px;"></div>
+
+    <div class="lifter-container" id="lifterContainer"></div>
   </div>
-  <div class="lifter-stats" id="lifterStats"></div>
-
-  <div class="floor-stats" style="top: 100px">
-    Floor 1: <span id="floor1Stats">0 arrived, 0 departed</span>
-  </div>
-  <div class="floor-stats" style="top: 180px">
-    Floor 2: <span id="floor2Stats">0 arrived, 0 departed</span>
-  </div>
-  <div class="floor-stats" style="top: 260px">
-    Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span>
-  </div>
-
-  <div class="floor-line" style="bottom: 80px;"></div>
-  <div class="floor-label" style="bottom: 85px; color: hsl(0, 70%, 60%);">Floor 1</div>
-  <div class="floor-line" style="bottom: 160px;"></div>
-  <div class="floor-label" style="bottom: 165px; color: hsl(120, 70%, 60%);">Floor 2</div>
-  <div class="floor-line" style="bottom: 240px;"></div>
-  <div class="floor-label" style="bottom: 245px; color: hsl(240, 70%, 60%);">Floor 3</div>
-
-  <div class="floor-waiting" id="floor-waiting-1" style="position: absolute; bottom: 60px; right: 40px; width: 120px; height: 60px;"></div>
-  <div class="floor-waiting" id="floor-waiting-2" style="position: absolute; bottom: 140px; right: 40px; width: 120px; height: 60px;"></div>
-  <div class="floor-waiting" id="floor-waiting-3" style="position: absolute; bottom: 220px; right: 40px; width: 120px; height: 60px;"></div>
-
-  <div class="lifter-container" id="lifterContainer"></div>
 
   <script>
     // Configuration
