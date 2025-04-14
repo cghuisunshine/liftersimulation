@@ -276,8 +276,12 @@
           // Move to the floor waiting area
           const floorWaitingArea = document.getElementById(`floor-waiting-${p.destinationFloor}`);
           floorWaitingArea.appendChild(p.element);
-          p.element.style.bottom = `${floorHeights[p.destinationFloor] - 20}px`;
-          p.element.style.left = `${Math.random() * 60 + 10}px`;
+          // Position in grid layout within the waiting area
+          const index = floorWaitingArea.childElementCount - 1;
+          const row = Math.floor(index / 6);
+          const col = index % 6;
+          p.element.style.left = `${10 + col * 18}px`;
+          p.element.style.bottom = `${10 + row * 18}px`;
           setTimeout(() => p.element.remove(), 1000);
           peopleTransported++;
           floorStats[p.destinationFloor - 1].arrived++;
@@ -432,12 +436,12 @@
       // Add to the waiting area for the specific floor
       const floorWaitingArea = document.getElementById(`floor-waiting-${person.startFloor}`);
       floorWaitingArea.appendChild(person.element);
-      // Position in grid layout
+      // Position in grid layout within the waiting area
       const index = floorWaitingArea.childElementCount - 1;
-      const row = Math.floor(index / 5);
-      const col = index % 5;
-      person.element.style.left = `${10 + col * 20}px`;
-      person.element.style.bottom = `${floorHeights[person.startFloor] - 20 - row * 20}px`;
+      const row = Math.floor(index / 6); // Adjusted for better spacing
+      const col = index % 6;
+      person.element.style.left = `${10 + col * 18}px`; // Adjusted for better spacing
+      person.element.style.bottom = `${10 + row * 18}px`; // Position relative to waiting area bottom
       floorStats[person.startFloor - 1].departed++;
       totalPeopleSpawned++;
       updateFloorStats();
