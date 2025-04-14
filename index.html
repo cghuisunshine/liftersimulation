@@ -51,20 +51,11 @@
       bottom: 20px;
     }
 
-    /* 
-      PASSENGER VISUAL STYLING WHEN INSIDE ELEVATOR:
-      - Relative positioning for proper stacking context
-      - Smooth transitions for all animatable properties
-      - Subtle shadow for depth perception
-      - Hardware-accelerated transforms (translateZ hack)
-      - Inline-block display for proper element sizing
-      - Small margin between passengers
-    */
     .person.in-lifter {
       position: relative;
       transition: all 0.3s ease;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      transform: translateZ(0); /* Force hardware acceleration */
+      transform: translateZ(0);
       display: inline-block;
       margin: 2px;
     }
@@ -98,6 +89,22 @@
       padding: 5px 10px;
       border-radius: 5px;
       font-size: 12px;
+    }
+
+    .floor-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: #666;
+      z-index: 0;
+    }
+
+    .floor-label {
+      position: absolute;
+      left: 10px;
+      font-size: 14px;
+      color: #333;
     }
 
     .controls {
@@ -155,36 +162,33 @@
     Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span>
   </div>
 
-  <!-- 
-    LIFTER CONTAINER LAYOUT:
-    - Flexbox container holding all elevator cars
-    - Uses wrapping layout to handle multiple elevators
-    - 20px gap between elevators
-    - Centered horizontally with justify-content
-    - Initialized via initLifters() in JavaScript
-    - Each elevator (.lifter) contains:
-      * Moving platform (div.platform)
-      * Passenger area (div.lifter-passengers)
-      * Base element for visual styling
-  -->
+  <div class="floor-line" style="bottom: 80px;"></div>
+  <div class="floor-label" style="bottom: 85px;">Floor 1</div>
+  <div class="floor-line" style="bottom: 160px;"></div>
+  <div class="floor-label" style="bottom: 165px;">Floor 2</div>
+  <div class="floor-line" style="bottom: 240px;"></div>
+  <div class="floor-label" style="bottom: 245px;">Floor 3</div>
+
   <div class="lifter-container" id="lifterContainer"></div>
 
   <script>
     // Configuration
-    const NUM_LIFTERS = 8; // Reduced from 15 to make more visible activity
+    const NUM_LIFTERS = 3; // Reduced for more realistic building size
     const NUM_FLOORS = 3;
-    const SIMULATION_DURATION = 5000; // ms
-    const PERSON_SPAWN_RATE = 3; // Much faster spawn rate (3x more people)
-    const TOTAL_PEOPLE = 3000; // Triple the total people
+    const PERSON_SPAWN_RATE = 2000; // Slower spawn rate for realism (every 2 seconds)
+    const TOTAL_PEOPLE = 100; // Reasonable number of people for simulation
+    const FLOOR_TRAVEL_TIME = 2000; // Time to travel between floors in ms
+    const DOOR_OPEN_TIME = 1500; // Time for doors to open and close
+    const BOARDING_TIME = 500; // Time per person boarding/deboarding
 
     // State
     let lifters = [];
     let peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
     let peopleTransported = 0;
-    let totalLifts = 0;
+    let totalPeopleSpawned = 0;
+    let totalWaitTime = 0;
     let simulationInterval;
     let spawnInterval;
-    let startTime;
     let floorStats = Array(NUM_FLOORS).fill().map(() => ({
       arrived: 0,
       departed: 0
@@ -195,13 +199,11 @@
       const container = document.getElementById('lifterContainer');
       container.innerHTML = '';
       
-      // Initialize lifters in reverse order
       lifters = Array(NUM_LIFTERS).fill().map((_, i) => {
-        const reversedIndex = NUM_LIFTERS - 1 - i;
         const lifter = document.createElement('div');
         lifter.className = 'lifter';
         lifter.innerHTML = `
-          <div class="platform" id="platform-${reversedIndex}">
+          <div class="platform" id="platform-${i}">
             <div class="lifter-passengers"></div>
           </div>
           <div class="base"></div>
@@ -209,12 +211,17 @@
         container.appendChild(lifter);
         
         return {
-          id: reversedIndex,
-          element: document.getElementById(`platform-${reversedIndex}`),
+          id: i,
+          element: document.getElementById(`platform-${i}`),
+          passengersContainer: document.getElementById(`platform-${i}`).querySelector('.lifter-passengers'),
           currentFloor: 1,
-          destinations: [],
+          targetFloor: 1,
+          direction: 0, // 0=idle, 1=up, -1=down
           passengers: [],
-          maxCapacity: 10
+          callQueue: [], // Floors to visit
+          maxCapacity: 8,
+          state: 'idle', // idle, moving, doors_opening, boarding
+          stateTimer: 0
         };
       });
     }
@@ -228,196 +235,210 @@
 
     // Move lifter to floor
     function moveLifter(lifter, floor) {
+      if (floor > lifter.currentFloor) {
+        lifter.direction = 1;
+      } else if (floor < lifter.currentFloor) {
+        lifter.direction = -1;
+      } else {
+        lifter.direction = 0;
+      }
+      lifter.state = 'moving';
+      lifter.targetFloor = floor;
       lifter.element.style.bottom = floorHeights[floor] + 'px';
-      lifter.currentFloor = floor;
+      
+      // Calculate travel time based on number of floors
+      const floorsToTravel = Math.abs(floor - lifter.currentFloor);
+      const travelTime = floorsToTravel * FLOOR_TRAVEL_TIME;
+      
+      lifter.stateTimer = setTimeout(() => {
+        lifter.currentFloor = floor;
+        lifter.state = 'doors_opening';
+        lifter.stateTimer = setTimeout(() => {
+          lifter.state = 'boarding';
+          processBoarding(lifter);
+        }, DOOR_OPEN_TIME);
+      }, travelTime);
     }
 
-    function processDestinations(lifter) {
-      if (lifter.destinations.length === 0) return;
-      
-      const nextFloor = lifter.destinations[0];
-      moveLifter(lifter, nextFloor);
-      
-      setTimeout(() => {
-        // Unload passengers for this floor
-        lifter.passengers = lifter.passengers.filter(p => {
-          if (p.destinationFloor === nextFloor) {
-            p.element.remove();
-            peopleTransported++;
-            floorStats[p.destinationFloor - 1].arrived++;
-            return false;
-          }
-          return true;
+    // Handle boarding and deboarding
+    function processBoarding(lifter) {
+      // First deboard passengers for current floor
+      const deboarding = lifter.passengers.filter(p => p.destinationFloor === lifter.currentFloor);
+      if (deboarding.length > 0) {
+        deboarding.forEach(p => {
+          const waitTime = Date.now() - p.waitStart;
+          totalWaitTime += waitTime;
+          p.element.style.position = 'absolute';
+          p.element.style.bottom = `${floorHeights[p.destinationFloor] - 20}px`;
+          p.element.style.left = `${Math.random() * 60 + 10}px`;
+          setTimeout(() => p.element.remove(), 1000);
+          peopleTransported++;
+          floorStats[p.destinationFloor - 1].arrived++;
         });
-        
-        // Remove processed destination and continue
-        lifter.destinations.shift();
-        processDestinations(lifter);
+        lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
+        updatePassengerPositions(lifter);
         updateStats();
         updateFloorStats();
-      }, 1000);
+      }
+      
+      // Then board new passengers if capacity allows
+      const floorQueue = peopleWaiting[lifter.currentFloor - 1];
+      const boarding = [];
+      while (floorQueue.length > 0 && lifter.passengers.length < lifter.maxCapacity) {
+        const person = floorQueue.shift();
+        // Check if person is going in the same direction as elevator or if elevator has no direction
+        const personDirection = person.destinationFloor > lifter.currentFloor ? 1 : -1;
+        if (lifter.direction === 0 || lifter.direction === personDirection || lifter.callQueue.length === 0) {
+          boarding.push(person);
+          person.boardLifter(lifter);
+          // Set direction if elevator was idle
+          if (lifter.direction === 0) {
+            lifter.direction = personDirection;
+          }
+        } else {
+          // Put person back in queue if not going in same direction
+          floorQueue.push(person);
+          break;
+        }
+      }
+      
+      // Calculate total boarding/deboarding time
+      const totalActions = deboarding.length + boarding.length;
+      if (totalActions > 0) {
+        lifter.stateTimer = setTimeout(() => {
+          lifter.state = 'idle';
+          determineNextAction(lifter);
+        }, totalActions * BOARDING_TIME);
+      } else {
+        lifter.stateTimer = setTimeout(() => {
+          lifter.state = 'idle';
+          determineNextAction(lifter);
+        }, DOOR_OPEN_TIME);
+      }
+    }
+
+    // Determine next action for elevator
+    function determineNextAction(lifter) {
+      // Clear any existing timer
+      if (lifter.stateTimer) {
+        clearTimeout(lifter.stateTimer);
+        lifter.stateTimer = 0;
+      }
+      
+      // If there are passengers, go to their destinations
+      if (lifter.passengers.length > 0) {
+        // Group destinations by floor
+        const destinations = [...new Set(lifter.passengers.map(p => p.destinationFloor))];
+        // Sort based on current direction
+        if (lifter.direction === 1) {
+          destinations.sort((a, b) => a - b);
+        } else if (lifter.direction === -1) {
+          destinations.sort((a, b) => b - a);
+        } else {
+          // If no direction, choose closest
+          destinations.sort((a, b) => Math.abs(a - lifter.currentFloor) - Math.abs(b - lifter.currentFloor));
+          lifter.direction = destinations[0] > lifter.currentFloor ? 1 : -1;
+        }
+        lifter.callQueue = destinations;
+        moveLifter(lifter, destinations[0]);
+        return;
+      }
+      
+      // Check call queue
+      if (lifter.callQueue.length > 0) {
+        const nextFloor = lifter.callQueue.shift();
+        moveLifter(lifter, nextFloor);
+        return;
+      }
+      
+      // No passengers, no calls - look for waiting people
+      const floorsWithWaiting = [];
+      for (let i = 0; i < NUM_FLOORS; i++) {
+        if (peopleWaiting[i].length > 0) {
+          floorsWithWaiting.push({
+            floor: i + 1,
+            count: peopleWaiting[i].length,
+            distance: Math.abs((i + 1) - lifter.currentFloor),
+            waitTime: peopleWaiting[i].length > 0 ? Date.now() - peopleWaiting[i][0].waitStart : 0
+          });
+        }
+      }
+      
+      if (floorsWithWaiting.length > 0) {
+        // Sort by a combination of wait time and distance
+        floorsWithWaiting.sort((a, b) => (b.waitTime * 0.6 + b.count * 0.4) - (a.waitTime * 0.6 + a.count * 0.4));
+        const targetFloor = floorsWithWaiting[0].floor;
+        lifter.callQueue = [targetFloor];
+        moveLifter(lifter, targetFloor);
+        return;
+      }
+      
+      // If nothing to do, return to ground floor or stay put
+      lifter.direction = 0;
+      if (lifter.currentFloor !== 1) {
+        moveLifter(lifter, 1);
+      }
     }
 
     // Person class
     class Person {
       constructor() {
         this.startFloor = Math.floor(Math.random() * NUM_FLOORS) + 1;
-        // Generate destination floor that's different from start floor
         const possibleFloors = Array.from({length: NUM_FLOORS}, (_, i) => i + 1)
           .filter(floor => floor !== this.startFloor);
         this.destinationFloor = possibleFloors[Math.floor(Math.random() * possibleFloors.length)];
         this.waitStart = Date.now();
-        this.boardingTime = null;
-        this.lifterId = null;
-        
-        // Create visual element
         this.element = document.createElement('div');
-        this.element.className = 'person';
+        this.element.className = 'person waiting';
         this.element.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
         this.element.style.left = `${Math.random() * 60 + 10}px`;
-        // Append to the specific lifter container
-        const lifterContainer = document.getElementById(`platform-${this.startFloor - 1}`).parentNode;
-        lifterContainer.appendChild(this.element);
-        this.element.style.position = 'absolute';
+        this.element.style.bottom = `${floorHeights[this.startFloor] - 20}px`;
         this.element.style.zIndex = '100';
-        
-        // Position at start floor
-        this.updatePosition('waiting');
       }
 
-      updatePosition(state) {
-        if (state === 'waiting') {
-          this.element.classList.remove('in-lifter');
-          this.element.classList.add('waiting');
-          this.element.style.bottom = `${floorHeights[this.startFloor] - 20}px`;
-        } else if (state === 'in-lifter') {
-          this.element.classList.remove('waiting');
-          this.element.classList.add('in-lifter');
-          this.element.dataset.lifterId = this.lifterId;
-          
-          // Position people in a grid inside the lifter
-          const lifter = lifters.find(l => l.id === this.lifterId);
-          if (!lifter) return;
-          
-          const row = Math.floor(this.element.dataset.personIndex / 4);
-          const col = this.element.dataset.personIndex % 4;
-          
-          // Position relative to the lifter container
-          const lifterContainer = document.getElementById(`platform-${lifter.id}`).parentNode;
-          const containerRect = lifterContainer.getBoundingClientRect();
-          
-          // Calculate positions within the lifter
-          const leftPos = 20 + col * 15;
-          const bottomPos = 20 + row * 20;
-          
-          this.element.style.left = `${leftPos}px`;
-          this.element.style.bottom = `${bottomPos}px`;
-          this.element.style.zIndex = 10 + row;
-        }
+      boardLifter(lifter) {
+        this.element.classList.remove('waiting');
+        this.element.classList.add('in-lifter');
+        lifter.passengersContainer.appendChild(this.element);
+        lifter.passengers.push(this);
       }
+    }
+
+    function updatePassengerPositions(lifter) {
+      lifter.passengers.forEach((p, index) => {
+        const row = Math.floor(index / 4);
+        const col = index % 4;
+        p.element.style.left = `${20 + col * 15}px`;
+        p.element.style.bottom = `${20 + row * 20}px`;
+        p.element.style.zIndex = 10 + row;
+      });
     }
 
     // Spawn people
     function spawnPeople() {
-      if (totalLifts >= TOTAL_PEOPLE) {
+      if (totalPeopleSpawned >= TOTAL_PEOPLE) {
         clearInterval(spawnInterval);
-        clearInterval(simulationInterval);
         return;
       }
       
       const person = new Person();
       peopleWaiting[person.startFloor - 1].push(person);
+      document.getElementById(`platform-${Math.floor(Math.random() * NUM_LIFTERS)}`).parentNode.appendChild(person.element);
       floorStats[person.startFloor - 1].departed++;
+      totalPeopleSpawned++;
       updateFloorStats();
       updateStats();
       updateLifterStats();
     }
 
-    // Assign people to lifters
-    function assignPeople() {
-      if (totalLifts >= TOTAL_PEOPLE) {
-        clearInterval(spawnInterval);
-        clearInterval(simulationInterval);
-        return;
-      }
-
-      // Sort lifters by fewest passengers to distribute people more evenly
-      const availableLifters = lifters
-        .filter(l => l.passengers < l.maxCapacity)
-        .sort((a, b) => a.passengers - b.passengers);
-
-      // First try to assign people to lifters already on their floor
-      for (const lifter of availableLifters) {
-        const floorQueue = peopleWaiting[lifter.currentFloor - 1];
-        if (floorQueue.length === 0) continue;
-        
-        const person = floorQueue.shift();
-        person.lifterId = lifter.id;
-        person.element.dataset.personIndex = lifter.passengers;
-        
-        // Animate person entering lifter
-        person.updatePosition('in-lifter');
-        
-        // Assign to lifter
-        lifter.destination = person.destinationFloor;
-        lifter.passengers++;
-        totalLifts++;
-        console.log(`Assigned person to lifter ${lifter.id} (now has ${lifter.passengers} passengers)`);
-        
-        // Move lifter
-        setTimeout(() => {
-          moveLifter(lifter, lifter.destination);
-          setTimeout(() => {
-            // Drop off passenger
-            lifter.passengers--;
-            peopleTransported++;
-            // Only clear destination if no more passengers
-            if (lifter.passengers === 0) {
-              lifter.destination = null;
-            }
-            
-            // Update floor stats
-            floorStats[person.destinationFloor - 1].arrived++;
-            updateFloorStats();
-            
-            // Keep person visible at destination floor briefly
-            person.element.style.bottom = `${floorHeights[person.destinationFloor] - 20}px`;
-            setTimeout(() => person.element.remove(), 1000);
-            
-            updateStats();
-          }, 1000);
-        }, 500);
-      }
-
-      // Then move empty lifters to floors with waiting people
-      const emptyLifters = availableLifters.filter(l => l.passengers === 0);
-      if (emptyLifters.length > 0) {
-        // Find floors with most waiting people first
-        const floorsByDemand = [...Array(NUM_FLOORS).keys()]
-          .filter(floor => peopleWaiting[floor].length > 0)
-          .sort((a, b) => peopleWaiting[b].length - peopleWaiting[a].length);
-        
-        for (const floor of floorsByDemand) {
-          const lifter = emptyLifters.shift();
-          if (!lifter) break;
-          
-          lifter.destination = floor + 1;
-          moveLifter(lifter, floor + 1);
-          console.log(`Moved empty lifter ${lifter.id} to floor ${floor + 1}`);
-          
-          // Assign people immediately if possible
-          const floorQueue = peopleWaiting[floor];
-          while (floorQueue.length > 0 && lifter.passengers < lifter.maxCapacity) {
-            const person = floorQueue.shift();
-            person.lifterId = lifter.id;
-            person.element.dataset.personIndex = lifter.passengers;
-            person.updatePosition('in-lifter');
-            lifter.destination = person.destinationFloor;
-            lifter.passengers++;
-            totalLifts++;
-          }
+    // Main simulation loop
+    function runSimulation() {
+      // Check on lifters that are idle and might need new actions
+      lifters.forEach(lifter => {
+        if (lifter.state === 'idle' && lifter.callQueue.length === 0 && lifter.passengers.length === 0) {
+          determineNextAction(lifter);
         }
-      }
+      });
     }
 
     // Update statistics
@@ -428,7 +449,8 @@
       lifters.forEach((lifter, i) => {
         const stat = document.createElement('div');
         stat.className = 'lifter-stat';
-        stat.textContent = `Lifter ${i+1}: Floor ${lifter.currentFloor}, Passengers: ${lifter.passengers}, Dest: ${lifter.destination || '-'}`;
+        const dir = lifter.direction === 1 ? '↑' : lifter.direction === -1 ? '↓' : '-';
+        stat.textContent = `Lifter ${i+1}: Floor ${lifter.currentFloor}, Pass: ${lifter.passengers.length}/${lifter.maxCapacity}, Dir: ${dir}, State: ${lifter.state}`;
         container.appendChild(stat);
       });
     }
@@ -437,16 +459,10 @@
       const totalWaiting = peopleWaiting.reduce((sum, queue) => sum + queue.length, 0);
       document.getElementById('waitingCount').textContent = totalWaiting;
       document.getElementById('transportedCount').textContent = peopleTransported;
-      
-      if (peopleTransported > 0) {
-        const allWaiting = peopleWaiting.flat();
-        const avgWait = allWaiting.reduce((sum, p) => 
-          sum + (Date.now() - p.waitStart), 0) / peopleTransported / 1000;
-        document.getElementById('avgWaitTime').textContent = avgWait.toFixed(1);
-      }
+      const avgWaitTime = peopleTransported > 0 ? (totalWaitTime / peopleTransported / 1000).toFixed(1) : 0;
+      document.getElementById('avgWaitTime').textContent = avgWaitTime;
     }
 
-    // Update floor statistics
     function updateFloorStats() {
       for (let i = 0; i < NUM_FLOORS; i++) {
         document.getElementById(`floor${i+1}Stats`).textContent = 
@@ -456,33 +472,32 @@
 
     // Start simulation
     function startSimulation() {
-      initLifters();
-      peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
-      peopleTransported = 0;
-      totalLifts = 0;
-      floorStats = Array(NUM_FLOORS).fill().map(() => ({
-        arrived: 0,
-        departed: 0
-      }));
-      startTime = Date.now();
-      
+      resetSimulation();
       spawnInterval = setInterval(spawnPeople, PERSON_SPAWN_RATE);
-      simulationInterval = setInterval(assignPeople, 100);
+      simulationInterval = setInterval(runSimulation, 100);
     }
 
     // Reset simulation
     function resetSimulation() {
       clearInterval(simulationInterval);
       clearInterval(spawnInterval);
+      lifters.forEach(lifter => {
+        if (lifter.stateTimer) {
+          clearTimeout(lifter.stateTimer);
+        }
+      });
       initLifters();
-      peopleWaiting = [];
+      peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
       peopleTransported = 0;
+      totalPeopleSpawned = 0;
+      totalWaitTime = 0;
       floorStats = Array(NUM_FLOORS).fill().map(() => ({
         arrived: 0,
         departed: 0
       }));
       updateStats();
       updateFloorStats();
+      updateLifterStats();
     }
 
     // Event listeners
