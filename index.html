@@ -356,8 +356,11 @@
       const floorQueue = peopleWaiting[lifter.currentFloor - 1];
       const boarding = [];
 
+      // Log for debugging
+      console.log(`Processing boarding at floor ${lifter.currentFloor}, passengers to deboard: ${deboarding.length}, total passengers: ${lifter.passengers.length}`);
+
       // Prepare boarding list
-      while (floorQueue.length > 0 && lifter.passengers.length < lifter.maxCapacity) {
+      while (floorQueue.length > 0 && lifter.passengers.length - deboarding.length < lifter.maxCapacity) {
         const person = floorQueue.shift();
         const personDirection = person.destinationFloor > lifter.currentFloor ? 1 : -1;
         if (lifter.direction === 0 || lifter.direction === personDirection || lifter.callQueue.length === 0) {
@@ -385,6 +388,7 @@
           const waitTime = Date.now() - p.waitStart;
           totalWaitTime += waitTime;
           p.element.classList.add('deboarding');
+          console.log(`Deboarding person from floor ${p.startFloor} to ${p.destinationFloor} at lifter floor ${lifter.currentFloor}`);
           setTimeout(() => {
             p.element.classList.remove('deboarding');
             p.element.style.position = 'absolute';
