@@ -75,19 +75,28 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      transition: all 0.3s ease;
+      transition: all 0.5s ease-in-out;
       border: 1px solid rgba(0,0,0,0.3);
     }
     .person.waiting {
       bottom: 20px;
+      opacity: 1;
     }
     .person.in-lifter {
       position: relative;
-      transition: all 0.3s ease;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
       transform: translateZ(0);
       display: inline-block;
       margin: 2px;
+      opacity: 1;
+    }
+    .person.deboarding {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    .person.boarding {
+      opacity: 0.7;
+      transform: scale(1.2);
     }
     .lifter-passengers {
       position: absolute;
@@ -328,63 +337,84 @@
       }, travelTime);
     }
 
-    // Handle boarding and deboarding
+    // Handle boarding and deboarding with animations
     function processBoarding(lifter) {
       // First deboard passengers for current floor
       const deboarding = lifter.passengers.filter(p => p.destinationFloor === lifter.currentFloor);
-      if (deboarding.length > 0) {
-        deboarding.forEach(p => {
-          const waitTime = Date.now() - p.waitStart;
-          totalWaitTime += waitTime;
-          p.element.style.position = 'absolute';
-          // Move to the floor waiting area
-          const floorWaitingArea = document.getElementById(`floor-waiting-${p.destinationFloor}`);
-          floorWaitingArea.appendChild(p.element);
-          // Position in grid layout within the waiting area
-          const index = floorWaitingArea.childElementCount - 1;
-          const row = Math.floor(index / 6);
-          const col = index % 6;
-          p.element.style.left = `${10 + col * 18}px`;
-          p.element.style.bottom = `${10 + row * 18}px`;
-          setTimeout(() => p.element.remove(), 1000);
-          peopleTransported++;
-          // Record arrival from start floor to destination floor
-          floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
-        });
-        lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
-        updatePassengerPositions(lifter);
-        updateStats();
-        updateFloorStats();
-      }
-      
-      // Then board new passengers if capacity allows
+      let deboardIndex = 0;
+      let boardIndex = 0;
       const floorQueue = peopleWaiting[lifter.currentFloor - 1];
       const boarding = [];
+
+      // Prepare boarding list
       while (floorQueue.length > 0 && lifter.passengers.length < lifter.maxCapacity) {
         const person = floorQueue.shift();
-        // Check if person is going in the same direction as elevator or if elevator has no direction
         const personDirection = person.destinationFloor > lifter.currentFloor ? 1 : -1;
         if (lifter.direction === 0 || lifter.direction === personDirection || lifter.callQueue.length === 0) {
           boarding.push(person);
-          person.boardLifter(lifter);
-          // Set direction if elevator was idle
           if (lifter.direction === 0) {
             lifter.direction = personDirection;
           }
         } else {
-          // Put person back in queue if not going in same direction
           floorQueue.push(person);
           break;
         }
       }
-      
-      // Calculate total boarding/deboarding time
-      const totalActions = deboarding.length + boarding.length;
-      if (totalActions > 0) {
-        lifter.stateTimer = setTimeout(() => {
+
+      // Function to handle deboarding animation one by one
+      function animateDeboarding() {
+        if (deboardIndex < deboarding.length) {
+          const p = deboarding[deboardIndex];
+          const waitTime = Date.now() - p.waitStart;
+          totalWaitTime += waitTime;
+          p.element.classList.add('deboarding');
+          setTimeout(() => {
+            p.element.classList.remove('deboarding');
+            p.element.style.position = 'absolute';
+            const floorWaitingArea = document.getElementById(`floor-waiting-${p.destinationFloor}`);
+            floorWaitingArea.appendChild(p.element);
+            const index = floorWaitingArea.childElementCount - 1;
+            const row = Math.floor(index / 6);
+            const col = index % 6;
+            p.element.style.left = `${10 + col * 18}px`;
+            p.element.style.bottom = `${10 + row * 18}px`;
+            setTimeout(() => p.element.remove(), 1000);
+            peopleTransported++;
+            floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
+            updateStats();
+            updateFloorStats();
+            deboardIndex++;
+            animateDeboarding();
+          }, 300);
+        } else {
+          lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
+          updatePassengerPositions(lifter);
+          animateBoarding();
+        }
+      }
+
+      // Function to handle boarding animation one by one
+      function animateBoarding() {
+        if (boardIndex < boarding.length) {
+          const person = boarding[boardIndex];
+          person.element.classList.add('boarding');
+          setTimeout(() => {
+            person.element.classList.remove('boarding');
+            person.boardLifter(lifter);
+            boardIndex++;
+            animateBoarding();
+          }, 300);
+        } else {
           lifter.state = 'idle';
           determineNextAction(lifter);
-        }, totalActions * BOARDING_TIME);
+        }
+      }
+
+      // Start the animation sequence
+      if (deboarding.length > 0) {
+        animateDeboarding();
+      } else if (boarding.length > 0) {
+        animateBoarding();
       } else {
         lifter.stateTimer = setTimeout(() => {
           lifter.state = 'idle';
