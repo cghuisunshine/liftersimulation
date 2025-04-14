@@ -48,6 +48,19 @@
       border: 2px solid #333;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
+    .lifter-floor {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      z-index: 5;
+    }
     .platform {
       position: absolute;
       bottom: 60px;
@@ -290,6 +303,7 @@
         const lifter = document.createElement('div');
         lifter.className = 'lifter';
         lifter.innerHTML = `
+          <div class="lifter-floor" id="floor-indicator-${i}">${1}</div>
           <div class="platform" id="platform-${i}">
             <div class="lifter-passengers"></div>
           </div>
@@ -339,6 +353,8 @@
       
       lifter.stateTimer = setTimeout(() => {
         lifter.currentFloor = floor;
+        // Update floor indicator
+        document.getElementById(`floor-indicator-${lifter.id}`).textContent = floor;
         lifter.state = 'doors_opening';
         lifter.stateTimer = setTimeout(() => {
           lifter.state = 'boarding';
