@@ -193,8 +193,9 @@
     let totalWaitTime = 0;
     let simulationInterval;
     let spawnInterval;
+    // Track arrivals from each origin floor to each destination floor
     let floorStats = Array(NUM_FLOORS).fill().map(() => ({
-      arrived: 0,
+      arrivedFrom: Array(NUM_FLOORS).fill(0), // Count of people arrived from each floor
       departed: 0
     }));
 
@@ -284,7 +285,8 @@
           p.element.style.bottom = `${10 + row * 18}px`;
           setTimeout(() => p.element.remove(), 1000);
           peopleTransported++;
-          floorStats[p.destinationFloor - 1].arrived++;
+          // Record arrival from start floor to destination floor
+          floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
         });
         lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
         updatePassengerPositions(lifter);
@@ -490,9 +492,26 @@
     }
 
     function updateFloorStats() {
+      const colors = {
+        1: 'hsl(0, 70%, 60%)',   // Red for Floor 1
+        2: 'hsl(120, 70%, 60%)', // Green for Floor 2
+        3: 'hsl(240, 70%, 60%)'  // Blue for Floor 3
+      };
+      
       for (let i = 0; i < NUM_FLOORS; i++) {
-        document.getElementById(`floor${i+1}Stats`).textContent = 
-          `${floorStats[i].arrived} arrived, ${floorStats[i].departed} departed`;
+        const arrivedDetails = floorStats[i].arrivedFrom
+          .map((count, originFloor) => {
+            if (count > 0) {
+              const floorNum = originFloor + 1;
+              return `<span style="color: ${colors[floorNum]}">${count} from F${floorNum}</span>`;
+            }
+            return '';
+          })
+          .filter(text => text !== '')
+          .join(', ');
+          
+        document.getElementById(`floor${i+1}Stats`).innerHTML = 
+          `Arrived: ${arrivedDetails || '0'}, Departed: ${floorStats[i].departed}`;
       }
     }
 
@@ -518,7 +537,7 @@
       totalPeopleSpawned = 0;
       totalWaitTime = 0;
       floorStats = Array(NUM_FLOORS).fill().map(() => ({
-        arrived: 0,
+        arrivedFrom: Array(NUM_FLOORS).fill(0),
         departed: 0
       }));
       updateStats();
