@@ -226,6 +226,61 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       border: 1px solid #ddd;
     }
+    .config-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 15px;
+      padding: 15px;
+      background: #eee;
+      border-radius: 8px;
+    }
+    .config-controls div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .config-controls label {
+      font-size: 12px;
+      margin-bottom: 3px;
+      color: #555;
+    }
+    .config-controls input[type="number"],
+    .config-controls input[type="range"] {
+      width: 80px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .config-controls input[type="range"] {
+      width: 120px;
+    }
+    .config-controls span {
+      font-size: 12px;
+      color: #555;
+    }
+    /* Add CSS variable for animation speed */
+    :root {
+        --person-animation-time: 1.2s;
+    }
+    /* Modify person transition to use variable */
+    .person {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      transition: all var(--person-animation-time) cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
   </style>
 </head>
 <body>
@@ -234,8 +289,39 @@
     Watch how elevators operate in a building with multiple floors. People (colored dots) appear on different floors and request to go to other floors. The color of each person indicates their destination floor. Click "Start Simulation" to begin and "Reset" to clear the simulation.
   </div>
   <div class="container">
+    <div class="config-controls" id="configControls">
+      <div>
+        <label for="numLifters">Lifters:</label>
+        <input type="number" id="numLifters" value="3" min="1" max="10">
+      </div>
+      <div>
+        <label for="numFloors">Floors:</label>
+        <input type="number" id="numFloors" value="3" min="2" max="5" disabled>
+      </div>
+      <div>
+        <label for="totalPeople">Total People:</label>
+        <input type="number" id="totalPeople" value="100" min="10" max="500">
+      </div>
+      <div>
+        <label for="spawnRate">Spawn Delay (ms):</label>
+        <input type="number" id="spawnRate" value="2000" min="100" max="10000">
+      </div>
+      <div>
+        <label for="travelTime">Floor Travel (ms):</label>
+        <input type="number" id="travelTime" value="2000" min="500" max="5000">
+      </div>
+      <div>
+        <label for="doorTime">Door Time (ms):</label>
+        <input type="number" id="doorTime" value="1500" min="500" max="3000">
+      </div>
+      <div>
+        <label for="simSpeed">Speed:</label>
+        <input type="range" id="simSpeed" min="0.5" max="4" step="0.1" value="1">
+        <span id="simSpeedLabel">1.0x</span>
+      </div>
+    </div>
     <div class="controls">
-      <button id="startBtn">Start Simulation</button>
+      <button id="startPauseResumeBtn">Start Simulation</button>
       <button id="resetBtn">Reset</button>
     </div>
 
@@ -270,15 +356,24 @@
     <div class="lifter-container" id="lifterContainer"></div>
   </div>
 
+    <div id="arrived-area-1" style="position: absolute; bottom: 55px; left: 40px; width: 100px; height: 25px; z-index: 90;"></div>
+    <div id="arrived-area-2" style="position: absolute; bottom: 135px; left: 40px; width: 100px; height: 25px; z-index: 90;"></div>
+    <div id="arrived-area-3" style="position: absolute; bottom: 215px; left: 40px; width: 100px; height: 25px; z-index: 90;"></div>
   <script>
-    // Configuration
-    const NUM_LIFTERS = 3; // Reduced for more realistic building size
-    const NUM_FLOORS = 3;
-    const PERSON_SPAWN_RATE = 2000; // Slower spawn rate for realism (every 2 seconds)
-    const TOTAL_PEOPLE = 100; // Reasonable number of people for simulation
-    const FLOOR_TRAVEL_TIME = 2000; // Time to travel between floors in ms
-    const DOOR_OPEN_TIME = 1500; // Time for doors to open and close
-    const BOARDING_TIME = 500; // Time per person boarding/deboarding
+    // Configuration (Defaults, will be read from UI)
+    let NUM_LIFTERS = 3;
+    let NUM_FLOORS = 3; // Note: Changing this requires CSS/HTML updates for floor lines/labels/stats
+    let PERSON_SPAWN_RATE = 2000;
+    let TOTAL_PEOPLE = 100;
+    let BASE_FLOOR_TRAVEL_TIME = 2000;
+    let BASE_DOOR_OPEN_TIME = 1500;
+    let BASE_BOARDING_TIME = 1200; // Base time for boarding/deboarding animation (CSS transition is 1.2s)
+
+    // Speed Control
+    let currentSimSpeed = 1.0;
+    let FLOOR_TRAVEL_TIME = BASE_FLOOR_TRAVEL_TIME;
+    let DOOR_OPEN_TIME = BASE_DOOR_OPEN_TIME;
+    let BOARDING_TIME = BASE_BOARDING_TIME;
 
     // State
     let lifters = [];
@@ -288,6 +383,9 @@
     let totalWaitTime = 0;
     let simulationInterval;
     let spawnInterval;
+    // Simulation Run State
+    let isRunning = false;
+    let isPaused = false;
     // Track arrivals from each origin floor to each destination floor
     let floorStats = Array(NUM_FLOORS).fill().map(() => ({
       arrivedFrom: Array(NUM_FLOORS).fill(0), // Count of people arrived from each floor
@@ -321,7 +419,7 @@
           passengers: [],
           callQueue: [], // Floors to visit
           maxCapacity: 8,
-          state: 'idle', // idle, moving, doors_opening, boarding
+          state: 'idle', // idle, moving, doors_opening, boarding, paused
           stateTimer: 0
         };
       });
@@ -344,6 +442,7 @@
         lifter.direction = 0;
       }
       lifter.state = 'moving';
+      updateLifterVisualState(lifter); // Update visual cues
       lifter.targetFloor = floor;
       lifter.element.style.bottom = floorHeights[floor] + 'px';
       
@@ -354,17 +453,22 @@
       
       // Calculate travel time based on number of floors
       const floorsToTravel = Math.abs(floor - lifter.currentFloor);
-      const travelTime = floorsToTravel * FLOOR_TRAVEL_TIME;
+      const travelTime = floorsToTravel * (FLOOR_TRAVEL_TIME / currentSimSpeed);
       
       lifter.stateTimer = setTimeout(() => {
+        if (isPaused) { lifter.state = 'paused'; return; } // Handle pause during travel
         lifter.currentFloor = floor;
         // Update floor indicator to show final floor
         document.getElementById(`floor-indicator-${lifter.id}`).textContent = floor;
+        lifter.direction = 0;
         lifter.state = 'doors_opening';
+        updateLifterVisualState(lifter);
         lifter.stateTimer = setTimeout(() => {
+          if (isPaused) { lifter.state = 'paused'; return; } // Handle pause during door open
           lifter.state = 'boarding';
+          updateLifterVisualState(lifter);
           processBoarding(lifter);
-        }, DOOR_OPEN_TIME);
+        }, DOOR_OPEN_TIME / currentSimSpeed);
       }, travelTime);
     }
 
@@ -411,23 +515,25 @@
           p.element.classList.add('deboarding');
           console.log(`Deboarding person from floor ${p.startFloor} to ${p.destinationFloor} at lifter floor ${lifter.currentFloor}`);
           setTimeout(() => {
+            if (isPaused) return; // Don't complete animation if paused
             p.element.classList.remove('deboarding');
             p.element.style.position = 'absolute';
-            const floorWaitingArea = document.getElementById(`floor-waiting-${p.destinationFloor}`);
-            floorWaitingArea.appendChild(p.element);
-            const index = floorWaitingArea.childElementCount - 1;
-            const row = Math.floor(index / 6);
-            const col = index % 6;
+            const arrivedArea = document.getElementById(`arrived-area-${p.destinationFloor}`);
+            arrivedArea.appendChild(p.element); // Move to arrived area
+            // Simple positioning in arrived area
+            const arrivedCount = arrivedArea.childElementCount - 1;
+            const col = arrivedCount % 5;
             p.element.style.left = `${10 + col * 18}px`;
-            p.element.style.bottom = `${10 + row * 18}px`;
+            p.element.style.bottom = `2px`;
             setTimeout(() => p.element.remove(), 2000);
             peopleTransported++;
             floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
             updateStats();
             updateFloorStats();
+            updateLifterStats(); // Update passenger count
             deboardIndex++;
             animateDeboarding();
-          }, 1200);
+          }, BASE_BOARDING_TIME); // Use base time for visual disappearance
         } else {
           lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
           updatePassengerPositions(lifter);
@@ -441,11 +547,13 @@
           const person = boarding[boardIndex];
           person.element.classList.add('boarding');
           setTimeout(() => {
+            if (isPaused) return; // Don't complete animation if paused
             person.element.classList.remove('boarding');
             person.boardLifter(lifter);
+            updateLifterStats(); // Update passenger count
             boardIndex++;
             animateBoarding();
-          }, 1200);
+          }, BOARDING_TIME / currentSimSpeed);
         } else {
           lifter.state = 'idle';
           determineNextAction(lifter);
@@ -459,14 +567,16 @@
         animateBoarding();
       } else {
         lifter.stateTimer = setTimeout(() => {
+          if (isPaused) { lifter.state = 'paused'; return; } // Handle pause during door close
           lifter.state = 'idle';
           determineNextAction(lifter);
-        }, DOOR_OPEN_TIME);
+        }, DOOR_OPEN_TIME / currentSimSpeed);
       }
     }
 
     // Determine next action for elevator
     function determineNextAction(lifter) {
+      if (isPaused || lifter.state !== 'idle') return; // Don't act if paused or already busy
       // Clear any existing timer
       if (lifter.stateTimer) {
         clearTimeout(lifter.stateTimer);
@@ -572,8 +682,11 @@
 
     // Spawn people
     function spawnPeople() {
-      if (totalPeopleSpawned >= TOTAL_PEOPLE) {
-        clearInterval(spawnInterval);
+      if (isPaused || totalPeopleSpawned >= TOTAL_PEOPLE) {
+        // If paused, just return. If finished spawning, clear interval.
+        if (totalPeopleSpawned >= TOTAL_PEOPLE) {
+          clearInterval(spawnInterval);
+        }
         return;
       }
       
@@ -597,8 +710,10 @@
 
     // Main simulation loop
     function runSimulation() {
+      if (isPaused) return;
       // Check on lifters that are idle and might need new actions
       lifters.forEach(lifter => {
+        updateLifterStats(); // Keep stats updated
         if (lifter.state === 'idle' && lifter.callQueue.length === 0 && lifter.passengers.length === 0) {
           determineNextAction(lifter);
         }
@@ -614,7 +729,11 @@
         const stat = document.createElement('div');
         stat.className = 'lifter-stat';
         const dir = lifter.direction === 1 ? '↑' : lifter.direction === -1 ? '↓' : '-';
-        stat.textContent = `Lifter ${i+1}: Floor ${lifter.currentFloor}, Pass: ${lifter.passengers.length}/${lifter.maxCapacity}, Dir: ${dir}, State: ${lifter.state}`;
+        let stateText = lifter.state;
+        if (lifter.state === 'moving') {
+          stateText += ` (${lifter.currentFloor}->${lifter.targetFloor})`;
+        }
+        stat.textContent = `Lifter ${i+1}: F${lifter.currentFloor}, P: ${lifter.passengers.length}/${lifter.maxCapacity}, Dir: ${dir}, State: ${stateText}`;
         container.appendChild(stat);
       });
     }
@@ -651,42 +770,154 @@
       }
     }
 
-    // Start simulation
-    function startSimulation() {
-      resetSimulation();
-      spawnInterval = setInterval(spawnPeople, PERSON_SPAWN_RATE);
-      simulationInterval = setInterval(runSimulation, 100);
+    // Update Simulation Speed and Apply Changes
+    function updateSimulationSpeed() {
+      const speedSlider = document.getElementById('simSpeed');
+      currentSimSpeed = parseFloat(speedSlider.value);
+      document.getElementById('simSpeedLabel').textContent = `${currentSimSpeed.toFixed(1)}x`;
+
+      // Update time constants based on speed (used for setTimeout durations)
+      FLOOR_TRAVEL_TIME = BASE_FLOOR_TRAVEL_TIME / currentSimSpeed;
+      DOOR_OPEN_TIME = BASE_DOOR_OPEN_TIME / currentSimSpeed;
+      BOARDING_TIME = BASE_BOARDING_TIME / currentSimSpeed; // Affects boarding step duration
+
+      // Update CSS variable for animation durations (affecting CSS transitions)
+      const personAnimationTime = (BASE_BOARDING_TIME / currentSimSpeed / 1000).toFixed(2); // Convert ms to s for CSS
+      document.documentElement.style.setProperty('--person-animation-time', `${personAnimationTime}s`);
+
+      // If simulation is running and not paused, restart spawn interval with new rate
+      if (isRunning && !isPaused) {
+        clearInterval(spawnInterval);
+        // Ensure spawn rate doesn't become too fast
+        const adjustedSpawnRate = Math.max(50, PERSON_SPAWN_RATE / currentSimSpeed);
+         spawnInterval = setInterval(spawnPeople, adjustedSpawnRate);
+      }
     }
 
-    // Reset simulation
+    // Start Simulation - Reads config, resets state, starts intervals
+    function startSimulation() {
+      if (isRunning) return; // Already running
+
+      // Read config values from UI just before starting
+      NUM_LIFTERS = parseInt(document.getElementById('numLifters').value);
+      // NUM_FLOORS = parseInt(document.getElementById('numFloors').value); // Requires more work if enabled
+      TOTAL_PEOPLE = parseInt(document.getElementById('totalPeople').value);
+      PERSON_SPAWN_RATE = parseInt(document.getElementById('spawnRate').value);
+      BASE_FLOOR_TRAVEL_TIME = parseInt(document.getElementById('travelTime').value);
+      BASE_DOOR_OPEN_TIME = parseInt(document.getElementById('doorTime').value);
+      // BASE_BOARDING_TIME is fixed for animation for now
+
+      isRunning = true;
+      isPaused = false;
+      resetSimulationState(); // Reset state but keep config values/UI enabled state
+      updateSimulationSpeed(); // Apply initial speed setting from slider
+      // Ensure spawn rate doesn't become too fast
+      const initialSpawnRate = Math.max(50, PERSON_SPAWN_RATE / currentSimSpeed);
+      spawnInterval = setInterval(spawnPeople, initialSpawnRate);
+      simulationInterval = setInterval(runSimulation, 100); // Main logic check frequency
+
+      document.getElementById('startPauseResumeBtn').textContent = 'Pause';
+      // Disable config inputs during simulation
+      document.querySelectorAll('#configControls input').forEach(input => input.disabled = true);
+    }
+
+    // Reset Simulation State (internal helper)
+    function resetSimulationState() {
+        clearInterval(simulationInterval);
+        clearInterval(spawnInterval);
+        lifters.forEach(lifter => {
+            if (lifter.stateTimer) {
+                clearTimeout(lifter.stateTimer);
+            }
+            // Clear any people elements still visually in lifters
+             if (lifter.passengersContainer) {
+                 lifter.passengersContainer.innerHTML = '';
+             }
+        });
+        initLifters(); // Recreate lifter objects and elements
+        peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
+        peopleTransported = 0;
+        totalPeopleSpawned = 0;
+        totalWaitTime = 0;
+        floorStats = Array(NUM_FLOORS).fill().map(() => ({
+            arrivedFrom: Array(NUM_FLOORS).fill(0),
+            departed: 0
+        }));
+        updateStats();
+        // Clear waiting and arrived areas visually
+        document.querySelectorAll('.floor-waiting, [id^="arrived-area-"]').forEach(el => el.innerHTML = '');
+        updateFloorStats();
+        updateLifterStats();
+    }
+
+    // Reset Simulation (called by button) - Clears state and resets UI
     function resetSimulation() {
-      clearInterval(simulationInterval);
-      clearInterval(spawnInterval);
-      lifters.forEach(lifter => {
-        if (lifter.stateTimer) {
-          clearTimeout(lifter.stateTimer);
+        resetSimulationState(); // Clear all simulation state
+
+        isRunning = false;
+        isPaused = false;
+        document.getElementById('startPauseResumeBtn').textContent = 'Start Simulation';
+        // Re-enable config inputs (except floors)
+        document.querySelectorAll('#configControls input:not(#numFloors)').forEach(input => input.disabled = false);
+        // Also re-enable speed slider if it was disabled
+        document.getElementById('simSpeed').disabled = false;
+    }
+
+    // Toggle Pause/Resume State
+    function togglePauseResume() {
+      if (!isRunning) return; // Can't pause if not running
+
+      isPaused = !isPaused;
+      if (isPaused) {
+        document.getElementById('startPauseResumeBtn').textContent = 'Resume';
+        clearInterval(spawnInterval); // Stop spawning
+        // Existing timeouts will complete unless checked internally. Main loop stops.
+        // Mark lifter state visually if desired (e.g., change color) - Optional
+      } else {
+        document.getElementById('startPauseResumeBtn').textContent = 'Pause';
+        // Restart spawning if not finished
+        if (totalPeopleSpawned < TOTAL_PEOPLE) {
+           // Ensure spawn rate doesn't become too fast
+           const adjustedSpawnRate = Math.max(50, PERSON_SPAWN_RATE / currentSimSpeed);
+           spawnInterval = setInterval(spawnPeople, adjustedSpawnRate);
         }
-      });
-      initLifters();
-      peopleWaiting = Array(NUM_FLOORS).fill().map(() => []);
-      peopleTransported = 0;
-      totalPeopleSpawned = 0;
-      totalWaitTime = 0;
-      floorStats = Array(NUM_FLOORS).fill().map(() => ({
-        arrivedFrom: Array(NUM_FLOORS).fill(0),
-        departed: 0
-      }));
-      updateStats();
-      updateFloorStats();
-      updateLifterStats();
+        // Lifters paused mid-action might need a nudge if their timeout check logic isn't robust.
+        // Setting them back to 'idle' if they were 'paused' state allows determineNextAction to reconsider them.
+        lifters.forEach(lifter => {
+            if (lifter.state === 'paused') { // If we marked them as paused explicitly
+                lifter.state = 'idle';
+                // Optionally, immediately check if they should do something
+                // determineNextAction(lifter);
+            }
+        });
+        // The main runSimulation interval will restart checks.
+      }
+      updateLifterStats(); // Update display to show paused state if implemented visually
+    }
+
+    // Helper function for visual state (optional enhancement)
+    function updateLifterVisualState(lifter) {
+        // Example: Remove previous state classes
+        // lifter.element.classList.remove('moving', 'doors-open', 'idle');
+        // Add current state class
+        // if (lifter.state === 'moving') lifter.element.classList.add('moving');
+        // Add more logic here later to change border colors, icons, etc.
     }
 
     // Event listeners
-    document.getElementById('startBtn').addEventListener('click', startSimulation);
+    document.getElementById('startPauseResumeBtn').addEventListener('click', () => {
+      if (!isRunning) {
+        startSimulation();
+      } else {
+        togglePauseResume();
+      }
+    });
     document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+    document.getElementById('simSpeed').addEventListener('input', updateSimulationSpeed); // Listener for speed slider
 
     // Initialize
     initLifters();
+    updateLifterStats(); // Initial update
   </script>
 </body>
 </html>
