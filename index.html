@@ -75,7 +75,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      transition: all 0.8s ease-in-out;
+      transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
       border: 1px solid rgba(0,0,0,0.3);
     }
     .person.waiting {
@@ -91,12 +91,12 @@
       opacity: 1;
     }
     .person.deboarding {
-      opacity: 0;
-      transform: translateX(30px) rotate(360deg);
+      opacity: 0.3;
+      transform: translateX(40px) rotate(720deg);
     }
     .person.boarding {
       opacity: 0.7;
-      transform: translateX(-30px) rotate(-360deg);
+      transform: translateX(-40px) rotate(-720deg);
     }
     .lifter-passengers {
       position: absolute;
@@ -378,14 +378,14 @@
             const col = index % 6;
             p.element.style.left = `${10 + col * 18}px`;
             p.element.style.bottom = `${10 + row * 18}px`;
-            setTimeout(() => p.element.remove(), 1500);
+            setTimeout(() => p.element.remove(), 2000);
             peopleTransported++;
             floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
             updateStats();
             updateFloorStats();
             deboardIndex++;
             animateDeboarding();
-          }, 800);
+          }, 1200);
         } else {
           lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
           updatePassengerPositions(lifter);
@@ -403,7 +403,7 @@
             person.boardLifter(lifter);
             boardIndex++;
             animateBoarding();
-          }, 800);
+          }, 1200);
         } else {
           lifter.state = 'idle';
           determineNextAction(lifter);
