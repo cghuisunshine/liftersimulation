@@ -107,13 +107,16 @@
     }
     .lifter-passengers {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      right: 10px;
+      bottom: 5px;
+      left: 5px;
+      right: 5px;
+      height: 80px;
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 5px;
+      align-content: flex-start;
+      gap: 2px;
+      overflow: hidden;
     }
     .lifter {
       z-index: 1;
@@ -530,8 +533,8 @@
       lifter.passengers.forEach((p, index) => {
         const row = Math.floor(index / 4);
         const col = index % 4;
-        p.element.style.left = `${20 + col * 15}px`;
-        p.element.style.bottom = `${20 + row * 20}px`;
+        p.element.style.left = `${col * 22}px`;
+        p.element.style.bottom = `${row * 22}px`;
         p.element.style.zIndex = 10 + row;
       });
     }
