@@ -75,7 +75,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      transition: all 0.5s ease-in-out;
+      transition: all 0.8s ease-in-out;
       border: 1px solid rgba(0,0,0,0.3);
     }
     .person.waiting {
@@ -378,14 +378,14 @@
             const col = index % 6;
             p.element.style.left = `${10 + col * 18}px`;
             p.element.style.bottom = `${10 + row * 18}px`;
-            setTimeout(() => p.element.remove(), 1000);
+            setTimeout(() => p.element.remove(), 1500);
             peopleTransported++;
             floorStats[p.destinationFloor - 1].arrivedFrom[p.startFloor - 1]++;
             updateStats();
             updateFloorStats();
             deboardIndex++;
             animateDeboarding();
-          }, 300);
+          }, 800);
         } else {
           lifter.passengers = lifter.passengers.filter(p => p.destinationFloor !== lifter.currentFloor);
           updatePassengerPositions(lifter);
@@ -403,7 +403,7 @@
             person.boardLifter(lifter);
             boardIndex++;
             animateBoarding();
-          }, 300);
+          }, 800);
         } else {
           lifter.state = 'idle';
           determineNextAction(lifter);
