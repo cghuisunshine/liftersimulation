@@ -169,6 +169,10 @@
   <div class="floor-line" style="bottom: 240px;"></div>
   <div class="floor-label" style="bottom: 245px;">Floor 3</div>
 
+  <div class="floor-waiting" id="floor-waiting-1" style="position: absolute; bottom: 60px; right: 40px; width: 120px; height: 60px;"></div>
+  <div class="floor-waiting" id="floor-waiting-2" style="position: absolute; bottom: 140px; right: 40px; width: 120px; height: 60px;"></div>
+  <div class="floor-waiting" id="floor-waiting-3" style="position: absolute; bottom: 220px; right: 40px; width: 120px; height: 60px;"></div>
+
   <div class="lifter-container" id="lifterContainer"></div>
 
   <script>
@@ -269,6 +273,9 @@
           const waitTime = Date.now() - p.waitStart;
           totalWaitTime += waitTime;
           p.element.style.position = 'absolute';
+          // Move to the floor waiting area
+          const floorWaitingArea = document.getElementById(`floor-waiting-${p.destinationFloor}`);
+          floorWaitingArea.appendChild(p.element);
           p.element.style.bottom = `${floorHeights[p.destinationFloor] - 20}px`;
           p.element.style.left = `${Math.random() * 60 + 10}px`;
           setTimeout(() => p.element.remove(), 1000);
@@ -391,8 +398,6 @@
         this.element = document.createElement('div');
         this.element.className = 'person waiting';
         this.element.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
-        this.element.style.left = `${Math.random() * 60 + 10}px`;
-        this.element.style.bottom = `${floorHeights[this.startFloor] - 20}px`;
         this.element.style.zIndex = '100';
       }
 
@@ -401,6 +406,7 @@
         this.element.classList.add('in-lifter');
         lifter.passengersContainer.appendChild(this.element);
         lifter.passengers.push(this);
+        updatePassengerPositions(lifter);
       }
     }
 
@@ -423,7 +429,15 @@
       
       const person = new Person();
       peopleWaiting[person.startFloor - 1].push(person);
-      document.getElementById(`platform-${Math.floor(Math.random() * NUM_LIFTERS)}`).parentNode.appendChild(person.element);
+      // Add to the waiting area for the specific floor
+      const floorWaitingArea = document.getElementById(`floor-waiting-${person.startFloor}`);
+      floorWaitingArea.appendChild(person.element);
+      // Position in grid layout
+      const index = floorWaitingArea.childElementCount - 1;
+      const row = Math.floor(index / 5);
+      const col = index % 5;
+      person.element.style.left = `${10 + col * 20}px`;
+      person.element.style.bottom = `${floorHeights[person.startFloor] - 20 - row * 20}px`;
       floorStats[person.startFloor - 1].departed++;
       totalPeopleSpawned++;
       updateFloorStats();
