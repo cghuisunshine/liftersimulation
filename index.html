@@ -173,14 +173,15 @@
     /* ############################################################## */
     function alignLiftersToFloor1(){
       const container=document.getElementById('lifterContainer');
-      const platform =container.querySelector('.platform');
-      const line     =document.querySelector('.floor-line');     // first = Floor&nbsp;1
-      if(!platform||!line)return;
+      /* we align the dark BASE, not the light platform */
+      const base = container.querySelector('.base');
+      const line = document.querySelector('.floor-line');    // first line = Floor&nbsp;1
+      if(!base || !line) return;
 
       /* clear any previous shift, then measure fresh */
-      container.style.transform='none';
-      const delta = platform.getBoundingClientRect().bottom - line.getBoundingClientRect().top;
-      container.style.transform=`translateY(${-delta}px)`;
+      container.style.transform = 'none';
+      const delta = base.getBoundingClientRect().bottom - line.getBoundingClientRect().top;
+      container.style.transform = `translateY(${-delta}px)`;
     }
     window.addEventListener('load',alignLiftersToFloor1);
     window.addEventListener('resize',alignLiftersToFloor1);
