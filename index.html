@@ -382,6 +382,9 @@
         `;
         container.appendChild(lifter);
         
+        // Set initial position to floor 1
+        document.getElementById(`platform-${i}`).style.bottom = floorHeights[1] + 'px';
+        
         return {
           id: i,
           element: document.getElementById(`platform-${i}`),
