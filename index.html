@@ -162,7 +162,7 @@
     .platform{
       position:absolute;
       left:-.6rem;
-      bottom:3.6rem;
+      bottom:0; /* fixed */
       width:7.2rem;
       height:1.5rem;
       background:var(--gray-3);
@@ -398,12 +398,19 @@
       });
     }
 
-    // Floor positions
-    const floorHeights = {
-      1: 60,
-      2: 140,
-      3: 220
-    };
+    /* ---------- DYNAMIC FLOOR POSITIONS ---------- */
+    const PLATFORM_HEIGHT = 24;   // .platform { height:1.5rem ≈ 24 px }
+    const FLOOR_LINE_BASE = 80;   // bottom of first .floor-line (Floor 1)
+    const FLOOR_GAP       = 80;   // vertical distance between floor lines
+
+    function platformBottomFor(floor) {
+      return FLOOR_LINE_BASE + (floor - 1) * FLOOR_GAP - PLATFORM_HEIGHT;
+    }
+
+    const floorHeights = {};      // map: floor → platform bottom (px)
+    for (let f = 1; f <= NUM_FLOORS; f++) {
+      floorHeights[f] = platformBottomFor(f);
+    }
 
     // Move lifter to floor
     function moveLifter(lifter, floor) {
