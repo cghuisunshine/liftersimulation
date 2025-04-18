@@ -408,7 +408,7 @@
     }
 
     const floorHeights = {};      // map: floor → platform bottom (px)
-    for (let f = 1; f <= NUM_FLOORS; f++) {
+    for (let f = 1; f <= 5; f++) { // Support up to 5 floors as per UI max
       floorHeights[f] = platformBottomFor(f);
     }
 
