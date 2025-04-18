@@ -185,6 +185,10 @@
     }
     window.addEventListener('load',alignLiftersToFloor1);
     window.addEventListener('resize',alignLiftersToFloor1);
+    
+    /* ---- keep the elevators glued to Floor 1 no matter what moves above them ---- */
+    const alignObserver = new ResizeObserver(alignLiftersToFloor1);
+    alignObserver.observe(document.querySelector('.container'));
 
     /* ############################################################## */
     /*  build lifts                                                   */
@@ -341,7 +345,6 @@
       isRunning=true;isPaused=false;resetSimulationState();updateSimulationSpeed();
       spawnInterval=setInterval(spawnPeople,Math.max(50,PERSON_SPAWN_RATE/currentSimSpeed));simulationInterval=setInterval(runSimulation,100);
       document.getElementById('startPauseResumeBtn').textContent='Pause';document.querySelectorAll('#configControls input').forEach(i=>i.disabled=true);
-      alignLiftersToFloor1(); // realign after the page layout just shifted
     }
 
     function togglePauseResume(){
