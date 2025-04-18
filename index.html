@@ -3,283 +3,256 @@
 <head>
   <title>Elevator Simulation</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      margin: 0;
-      padding: 20px;
+    /* ---------- 1. Theme tokens ---------- */
+    :root{
+      /* brand */
+      --brand-h:215;
+      --brand-s:80%;
+      --brand-l:50%;
+
+      /* grays */
+      --gray-0:#ffffff;
+      --gray-1:#f7f9fc;
+      --gray-2:#e4e9f0;
+      --gray-3:#cbd4e1;
+      --gray-4:#9aa5b3;
+      --gray-5:#4a5568;
+      --gray-6:#2d3748;
+
+      /* component radii & shadows */
+      --radius-s:6px;
+      --radius-m:10px;
+      --shadow-s:0 1px 3px rgba(0,0,0,.08);
+      --shadow-m:0 4px 10px rgba(0,0,0,.12);
+
+      /* typography scale */
+      --fs-xs:.78rem;
+      --fs-s:.9rem;
+      --fs-m:1rem;
+      --fs-l:1.25rem;
+      --fs-xl:1.6rem;
+
+      /* animation time */
+      --person-animation-time: 1.2s;
     }
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 10px;
+
+    /* ---------- 2. Reset / base ---------- */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+      background:var(--gray-1);
+      color:var(--gray-6);
+      line-height:1.5;
+      padding:1rem;
     }
-    .instructions {
-      text-align: center;
-      color: #666;
-      margin-bottom: 20px;
-      font-size: 14px;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
+
+    /* ---------- 3. Headings & helper text ---------- */
+    h1{
+      font-size:var(--fs-xl);
+      font-weight:700;
+      text-align:center;
+      margin-bottom:.25rem;
     }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      position: relative;
+    .instructions{
+      font-size:var(--fs-s);
+      max-width:48rem;
+      margin-inline:auto 1rem;
+      text-align:center;
+      color:var(--gray-5);
+      margin-bottom:1.5rem;
     }
-    .lifter-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 30px;
-      justify-content: center;
-      margin: 20px;
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    /* ---------- 4. Layout wrapper ---------- */
+    .container{
+      max-width:72rem;
+      margin-inline:auto;
+      display:flex;
+      flex-direction:column;
+      gap:1.5rem;
     }
-    .lifter {
-      position: relative;
-      width: 100px;
-      height: 320px;
-      background-color: #555;
-      border-radius: 10px;
-      border: 2px solid #333;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+
+    /* ---------- 5. Config panel ---------- */
+    .config-controls{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));
+      gap:1rem;
+      background:var(--gray-0);
+      padding:1rem;
+      border-radius:var(--radius-m);
+      box-shadow:var(--shadow-s);
     }
-    .lifter-floor {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      font-weight: bold;
-      font-size: 16px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 2px 6px;
-      border-radius: 4px;
-      z-index: 5;
+    .config-controls div{
+      display:flex;
+      flex-direction:column;
+      gap:.3rem;
+      text-align:center;
     }
-    .platform {
-      position: absolute;
-      bottom: 60px;
-      left: -10px;
-      width: 120px;
-      height: 25px;
-      background-color: #999;
-      border-radius: 5px;
-      transition: bottom 0.5s ease-in-out;
-      border: 1px solid #666;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    .config-controls label{font-size:var(--fs-xs);color:var(--gray-5)}
+    .config-controls input{padding:.35rem;border:1px solid var(--gray-3);border-radius:var(--radius-s);font-size:var(--fs-s)}
+    #simSpeed{width:100%}
+    #simSpeedLabel{font-size:var(--fs-xs);color:var(--gray-4)}
+
+    /* ---------- 6. CTA buttons ---------- */
+    .controls{
+      display:flex;
+      justify-content:center;
+      gap:.75rem;
     }
-    .base {
-      position: absolute;
-      bottom: 0;
-      left: -5px;
-      width: 110px;
-      height: 45px;
-      background-color: #333;
-      border-radius: 10px;
-      border: 1px solid #222;
+    .controls button{
+      min-width:10rem;
+      padding:.6rem 1rem;
+      font-size:var(--fs-m);
+      font-weight:600;
+      border:none;
+      border-radius:var(--radius-s);
+      color:var(--gray-0);
+      background:hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+      cursor:pointer;
+      transition:filter .15s;
     }
-    .person {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: bold;
-      color: rgba(255, 255, 255, 0.9);
-      text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    .controls button:hover{filter:brightness(1.05)}
+    #resetBtn{background:#e11d48}
+    #resetBtn:hover{filter:brightness(1.1)}
+
+    /* ---------- 7. Global stats ---------- */
+    .stats{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:space-evenly;
+      gap:1rem;
+      background:var(--gray-0);
+      border-radius:var(--radius-m);
+      box-shadow:var(--shadow-s);
+      padding:.8rem 1rem;
     }
-    .person.waiting {
-      bottom: 20px;
-      opacity: 1;
+    .stats div{font-size:var(--fs-s)}
+    .stats span{font-weight:600;color:hsl(var(--brand-h) var(--brand-s) 40%)}
+
+    /* ---------- 8. Elevator (lifter) area ---------- */
+    .lifter-container{
+      display:flex;
+      flex-wrap:wrap;
+      gap:2rem;
+      justify-content:center;
+      padding:1.5rem;
+      background:var(--gray-0);
+      border-radius:var(--radius-m);
+      box-shadow:var(--shadow-s);
     }
-    .person.in-lifter {
-      position: relative;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      transform: translateZ(0);
-      display: inline-block;
-      margin: 2px;
-      opacity: 1;
+    .lifter{
+      position:relative;
+      width:6rem;
+      height:20rem;
+      background:var(--gray-5);
+      border-radius:var(--radius-s);
+      box-shadow:var(--shadow-m) inset 0 0 0 2px rgba(0,0,0,.4);
     }
-    .person.deboarding {
-      opacity: 0.3;
-      transform: translateX(40px) rotate(720deg);
+    .lifter-floor{
+      position:absolute;
+      top:.3rem;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:var(--fs-s);
+      padding:.1rem .45rem;
+      background:rgba(0,0,0,.6);
+      border-radius:var(--radius-s);
+      color:var(--gray-0);
     }
-    .person.boarding {
-      opacity: 0.7;
-      transform: translateX(-40px) rotate(-720deg);
+    .platform{
+      position:absolute;
+      left:-.6rem;
+      bottom:3.6rem;
+      width:7.2rem;
+      height:1.5rem;
+      background:var(--gray-3);
+      border-radius:var(--radius-s);
+      transition:bottom .4s ease; /* snappier */
     }
-    .lifter-passengers {
-      position: absolute;
-      bottom: 0px;
-      left: 5px;
-      right: 5px;
-      height: 25px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-content: center;
-      gap: 2px;
-      overflow: hidden;
+    .base{
+      position:absolute;
+      left:-.3rem;
+      bottom:0;
+      width:6.6rem;
+      height:2.5rem;
+      background:var(--gray-6);
+      border-radius:var(--radius-m) var(--radius-m) 0 0;
     }
-    .lifter {
-      z-index: 1;
-      overflow: visible;
-      position: relative;
-      transform-style: preserve-3d;
+
+    /* inside each elevator */
+    .lifter-passengers{
+      position:absolute;
+      inset:.2rem;
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-content:flex-end;
+      gap:.2rem;
     }
-    .platform {
-      z-index: 2;
+
+    /* ---------- 9. Floor lines & labels ---------- */
+    .floor-line{
+      position:absolute;
+      left:1rem;
+      right:1rem;
+      height:2px;
+      background:var(--gray-4);
+      border-radius:1px;
     }
-    .floor-stats {
-      position: absolute;
-      right: 20px;
-      background: rgba(255,255,255,0.9);
-      padding: 10px 15px;
-      border-radius: 8px;
-      font-size: 13px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border: 1px solid #ddd;
+    .floor-label{
+      position:absolute;
+      left:1.3rem;
+      font-size:var(--fs-s);
+      font-weight:600;
+      padding:0 .4rem;
+      background:var(--gray-0);
+      border-radius:var(--radius-s);
+      transform:translateY(50%);
     }
-    .floor-line {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      height: 3px;
-      background-color: #555;
-      z-index: 0;
-      border-radius: 2px;
+
+    /* ----------10. Stats per elevator ---------- */
+    .lifter-stats{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+      gap:.75rem;
     }
-    .floor-label {
-      position: absolute;
-      left: 30px;
-      font-size: 16px;
-      font-weight: bold;
-      background: rgba(255,255,255,0.9);
-      padding: 0 5px;
-      border-radius: 3px;
+    .lifter-stat{
+      background:var(--gray-0);
+      border-radius:var(--radius-s);
+      box-shadow:var(--shadow-s);
+      padding:.55rem .8rem;
+      font-size:var(--fs-xs);
     }
-    .controls {
-      text-align: center;
-      margin: 20px;
+
+    /* ----------11. Waiting + arrived areas ---------- */
+    [id^="floor-waiting-"],
+    [id^="arrived-area-"]{
+      pointer-events:none; /* purely visual */
     }
-    .controls button {
-      padding: 12px 25px;
-      margin: 5px 10px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      transition: background-color 0.3s;
+    .person{
+      width:1.1rem;
+      height:1.1rem;
+      font-size:var(--fs-xs);
+      font-weight:700;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(0,0,0,.25);
+      border-radius:50%;
+      color:#fff;
+      text-shadow:0 0 3px rgba(0,0,0,.5);
     }
-    .controls button:hover {
-      background-color: #45a049;
+    /* riding */
+    .person.in-lifter{box-shadow:0 1px 3px rgba(0,0,0,.35)}
+    .person.deboarding{opacity:.2;transform:translateX(.8rem) rotate(720deg)}
+    .person.boarding{opacity:.65;transform:translateX(-.8rem) rotate(-720deg)}
+    /* waiting state updated below with CSS variable */
+    .person{
+      transition:all var(--person-animation-time) cubic-bezier(.4,0,.2,1);
     }
-    .controls button#resetBtn {
-      background-color: #f44336;
-    }
-    .controls button#resetBtn:hover {
-      background-color: #da190b;
-    }
-    .stats {
-      margin: 20px;
-      padding: 15px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-    }
-    .stats div {
-      font-size: 14px;
-      font-weight: bold;
-      color: #333;
-    }
-    .stats span {
-      font-weight: normal;
-      color: #555;
-    }
-    .lifter-stats {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 15px;
-      margin: 20px;
-    }
-    .lifter-stat {
-      padding: 8px 15px;
-      background: #fff;
-      border-radius: 5px;
-      font-size: 13px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border: 1px solid #ddd;
-    }
-    .config-controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 15px;
-      margin-bottom: 15px;
-      padding: 15px;
-      background: #eee;
-      border-radius: 8px;
-    }
-    .config-controls div {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .config-controls label {
-      font-size: 12px;
-      margin-bottom: 3px;
-      color: #555;
-    }
-    .config-controls input[type="number"],
-    .config-controls input[type="range"] {
-      width: 80px;
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .config-controls input[type="range"] {
-      width: 120px;
-    }
-    .config-controls span {
-      font-size: 12px;
-      color: #555;
-    }
-    /* Add CSS variable for animation speed */
-    :root {
-        --person-animation-time: 1.2s;
-    }
-    /* Modify person transition to use variable */
-    .person {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      transition: all var(--person-animation-time) cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: bold;
-      color: rgba(255, 255, 255, 0.9);
-      text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+
+    /* ----------12. Responsive helpers ---------- */
+    @media (max-width:42rem){
+      .lifter-container{gap:1rem}
+      .stats{flex-direction:column;align-items:center}
     }
   </style>
 </head>
