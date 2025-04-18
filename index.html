@@ -4,106 +4,87 @@
   <meta charset="utf-8">
   <title>Elevator Simulation</title>
   <style>
-    /* ---------- 1. Theme tokens ---------- */
+    /* -------------- 1. theme tokens -------------- */
     :root{
-      /* brand */
       --brand-h:215;--brand-s:80%;--brand-l:50%;
-      /* grays */
-      --gray-0:#ffffff;--gray-1:#f7f9fc;--gray-2:#e4e9f0;
-      --gray-3:#cbd4e1;--gray-4:#9aa5b3;--gray-5:#4a5568;--gray-6:#2d3748;
-      /* misc */
-      --radius-s:6px;--radius-m:10px;--shadow-s:0 1px 3px rgba(0,0,0,.08);
+      --gray-0:#fff;--gray-1:#f7f9fc;--gray-2:#e4e9f0;--gray-3:#cbd4e1;
+      --gray-4:#9aa5b3;--gray-5:#4a5568;--gray-6:#2d3748;
+      --radius-s:6px;--radius-m:10px;
+      --shadow-s:0 1px 3px rgba(0,0,0,.08);
       --shadow-m:0 4px 10px rgba(0,0,0,.12);
       --fs-xs:.78rem;--fs-s:.9rem;--fs-m:1rem;--fs-l:1.25rem;--fs-xl:1.6rem;
       --person-animation-time:1.2s;
     }
 
-    /* ---------- 2. Reset / base ---------- */
+    /* -------------- 2. reset / base -------------- */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100%}
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-      background:var(--gray-1);color:var(--gray-6);line-height:1.5;padding:1rem;
-    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+         background:var(--gray-1);color:var(--gray-6);line-height:1.5;padding:1rem}
 
-    /* ---------- 3. Headings & helper text ---------- */
+    /* -------------- 3. text -------------- */
     h1{font-size:var(--fs-xl);font-weight:700;text-align:center;margin-bottom:.25rem}
-    .instructions{font-size:var(--fs-s);max-width:48rem;margin-inline:auto 1rem;text-align:center;color:var(--gray-5);margin-bottom:1.5rem}
+    .instructions{font-size:var(--fs-s);max-width:48rem;margin-inline:auto 1rem;text-align:center;
+                  color:var(--gray-5);margin-bottom:1.5rem}
 
-    /* ---------- 4. Layout wrapper ---------- */
+    /* -------------- 4. layout wrapper -------------- */
     .container{max-width:72rem;margin-inline:auto;display:flex;flex-direction:column;gap:1.5rem}
 
-    /* ---------- 5. Config panel ---------- */
-    .config-controls{
-      display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));gap:1rem;
-      background:var(--gray-0);padding:1rem;border-radius:var(--radius-m);box-shadow:var(--shadow-s)
-    }
+    /* -------------- 5. config panel -------------- */
+    .config-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));gap:1rem;
+                     background:var(--gray-0);padding:1rem;border-radius:var(--radius-m);box-shadow:var(--shadow-s)}
     .config-controls div{display:flex;flex-direction:column;gap:.3rem;text-align:center}
     .config-controls label{font-size:var(--fs-xs);color:var(--gray-5)}
     .config-controls input{padding:.35rem;border:1px solid var(--gray-3);border-radius:var(--radius-s);font-size:var(--fs-s)}
     #simSpeed{width:100%}#simSpeedLabel{font-size:var(--fs-xs);color:var(--gray-4)}
 
-    /* ---------- 6. CTA buttons ---------- */
+    /* -------------- 6. CTA buttons -------------- */
     .controls{display:flex;justify-content:center;gap:.75rem}
-    .controls button{
-      min-width:10rem;padding:.6rem 1rem;font-size:var(--fs-m);font-weight:600;border:none;border-radius:var(--radius-s);
-      color:var(--gray-0);background:hsl(var(--brand-h) var(--brand-s) var(--brand-l));cursor:pointer;transition:filter .15s
-    }
+    .controls button{min-width:10rem;padding:.6rem 1rem;font-size:var(--fs-m);font-weight:600;border:none;
+                     border-radius:var(--radius-s);color:var(--gray-0);
+                     background:hsl(var(--brand-h) var(--brand-s) var(--brand-l));cursor:pointer;transition:filter .15s}
     .controls button:hover{filter:brightness(1.05)}
     #resetBtn{background:#e11d48}#resetBtn:hover{filter:brightness(1.1)}
 
-    /* ---------- 7. Global stats ---------- */
-    .stats{
-      display:flex;flex-wrap:wrap;justify-content:space-evenly;gap:1rem;
-      background:var(--gray-0);border-radius:var(--radius-m);box-shadow:var(--shadow-s);padding:.8rem 1rem
-    }
+    /* -------------- 7. global stats -------------- */
+    .stats{display:flex;flex-wrap:wrap;justify-content:space-evenly;gap:1rem;background:var(--gray-0);
+           border-radius:var(--radius-m);box-shadow:var(--shadow-s);padding:.8rem 1rem}
     .stats div{font-size:var(--fs-s)}.stats span{font-weight:600;color:hsl(var(--brand-h) var(--brand-s) 40%)}
 
-    /* ---------- 8. Elevator (lifter) area ---------- */
-    .lifter-container{
-      position:relative;display:flex;flex-wrap:wrap;gap:2rem;justify-content:center;
-      padding:1.5rem 1.5rem 0 1.5rem;                    /* bottom‑padding 0 */
-      background:var(--gray-0);border-radius:var(--radius-m);box-shadow:var(--shadow-s)
-    }
-    .lifter{
-      position:relative;width:6rem;height:20rem;background:var(--gray-5);
-      border-radius:var(--radius-s);box-shadow:var(--shadow-m) inset 0 0 0 2px rgba(0,0,0,.4)
-    }
-    .lifter-floor{
-      position:absolute;top:.3rem;left:50%;transform:translateX(-50%);
-      font-size:var(--fs-s);padding:.1rem .45rem;background:rgba(0,0,0,.6);border-radius:var(--radius-s);color:var(--gray-0)
-    }
-    .platform{
-      position:absolute;left:-.6rem;bottom:0;width:7.2rem;height:1.5rem;background:var(--gray-3);
-      border-radius:var(--radius-s);transition:bottom .4s ease
-    }
-    .base{
-      position:absolute;left:-.3rem;bottom:0;width:6.6rem;height:2.5rem;background:var(--gray-6);
-      border-radius:var(--radius-m) var(--radius-m) 0 0
-    }
-
+    /* -------------- 8. elevator bank -------------- */
+    .lifter-container{position:relative;display:flex;flex-wrap:wrap;gap:2rem;justify-content:center;
+                      padding:1.5rem 1.5rem 0 1.5rem;background:var(--gray-0);
+                      border-radius:var(--radius-m);box-shadow:var(--shadow-s);transition:transform .25s ease}
+    .lifter{position:relative;width:6rem;height:20rem;background:var(--gray-5);border-radius:var(--radius-s);
+            box-shadow:var(--shadow-m) inset 0 0 0 2px rgba(0,0,0,.4)}
+    .lifter-floor{position:absolute;top:.3rem;left:50%;transform:translateX(-50%);font-size:var(--fs-s);
+                  padding:.1rem .45rem;background:rgba(0,0,0,.6);border-radius:var(--radius-s);color:var(--gray-0)}
+    .platform{position:absolute;left:-.6rem;bottom:0;width:7.2rem;height:1.5rem;background:var(--gray-3);
+              border-radius:var(--radius-s);transition:bottom .4s ease}
+    .base{position:absolute;left:-.3rem;bottom:0;width:6.6rem;height:2.5rem;background:var(--gray-6);
+          border-radius:var(--radius-m) var(--radius-m) 0 0}
     .lifter-passengers{position:absolute;inset:.2rem;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-end;gap:.2rem}
 
-    /* ---------- 9. Floor lines & labels ---------- */
+    /* -------------- 9. floor lines & labels -------------- */
     .floor-line{position:absolute;left:1rem;right:1rem;height:2px;background:var(--gray-4);border-radius:1px}
-    .floor-label{position:absolute;left:1.3rem;font-size:var(--fs-s);font-weight:600;padding:0 .4rem;background:var(--gray-0);border-radius:var(--radius-s);transform:translateY(50%)}
+    .floor-label{position:absolute;left:1.3rem;font-size:var(--fs-s);font-weight:600;padding:0 .4rem;background:var(--gray-0);
+                 border-radius:var(--radius-s);transform:translateY(50%)}
 
-    /* ----------10. Stats per elevator ---------- */
+    /* -------------- 10. per‑lifter stats -------------- */
     .lifter-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem}
-    .lifter-stat{background:var(--gray-0);border-radius:var(--radius-s);box-shadow:var(--shadow-s);padding:.55rem .8rem;font-size:var(--fs-xs)}
+    .lifter-stat{background:var(--gray-0);border-radius:var(--radius-s);box-shadow:var(--shadow-s);
+                 padding:.55rem .8rem;font-size:var(--fs-xs)}
 
-    /* ----------11. Waiting + arrived areas ---------- */
+    /* -------------- 11. waiting / arrived dots -------------- */
     [id^="floor-waiting-"],[id^="arrived-area-"]{pointer-events:none}
-    .person{
-      width:1.1rem;height:1.1rem;font-size:var(--fs-xs);font-weight:700;display:flex;align-items:center;justify-content:center;
-      border:1px solid rgba(0,0,0,.25);border-radius:50%;color:#fff;text-shadow:0 0 3px rgba(0,0,0,.5);
-      transition:all var(--person-animation-time) cubic-bezier(.4,0,.2,1)
-    }
+    .person{width:1.1rem;height:1.1rem;font-size:var(--fs-xs);font-weight:700;display:flex;align-items:center;justify-content:center;
+            border:1px solid rgba(0,0,0,.25);border-radius:50%;color:#fff;text-shadow:0 0 3px rgba(0,0,0,.5);
+            transition:all var(--person-animation-time) cubic-bezier(.4,0,.2,1)}
     .person.in-lifter{box-shadow:0 1px 3px rgba(0,0,0,.35)}
     .person.deboarding{opacity:.2;transform:translateX(.8rem) rotate(720deg)}
     .person.boarding  {opacity:.65;transform:translateX(-.8rem) rotate(-720deg)}
 
-    /* ----------12. Responsive helpers ---------- */
+    /* -------------- 12. responsive tweaks -------------- */
     @media(max-width:42rem){.lifter-container{gap:1rem}.stats{flex-direction:column;align-items:center}}
   </style>
 </head>
@@ -113,16 +94,16 @@
     Watch how elevators operate in a building with multiple floors. People (colored dots) appear on different floors and request to go to other floors. The color of each person indicates their destination floor. Click "Start Simulation" to begin and "Reset" to clear the simulation.
   </div>
 
-  <!-- ======================= UI & display ======================= -->
+  <!-- ---------------- main UI block ---------------- -->
   <div class="container">
     <!-- config panel -->
     <div class="config-controls" id="configControls">
       <div><label for="numLifters">Lifters:</label><input type="number" id="numLifters" value="3" min="1" max="10"></div>
       <div><label for="numFloors">Floors:</label><input type="number" id="numFloors" value="3" min="2" max="5" disabled></div>
       <div><label for="totalPeople">Total People:</label><input type="number" id="totalPeople" value="100" min="10" max="500"></div>
-      <div><label for="spawnRate">Spawn Delay (ms):</label><input type="number" id="spawnRate" value="2000" min="100" max="10000"></div>
-      <div><label for="travelTime">Floor Travel (ms):</label><input type="number" id="travelTime" value="2000" min="500" max="5000"></div>
-      <div><label for="doorTime">Door Time (ms):</label><input type="number" id="doorTime" value="1500" min="500" max="3000"></div>
+      <div><label for="spawnRate">Spawn Delay&nbsp;(ms):</label><input type="number" id="spawnRate" value="2000" min="100" max="10000"></div>
+      <div><label for="travelTime">Floor Travel&nbsp;(ms):</label><input type="number" id="travelTime" value="2000" min="500" max="5000"></div>
+      <div><label for="doorTime">Door Time&nbsp;(ms):</label><input type="number" id="doorTime" value="1500" min="500" max="3000"></div>
       <div>
         <label for="simSpeed">Speed:</label>
         <input type="range" id="simSpeed" min="0.5" max="4" step="0.1" value="1">
@@ -130,7 +111,7 @@
       </div>
     </div>
 
-    <!-- buttons -->
+    <!-- start / reset buttons -->
     <div class="controls">
       <button id="startPauseResumeBtn">Start Simulation</button>
       <button id="resetBtn">Reset</button>
@@ -138,100 +119,112 @@
 
     <!-- global stats -->
     <div class="stats">
-      <div>People Waiting: <span id="waitingCount">0</span></div>
-      <div>People Transported: <span id="transportedCount">0</span></div>
-      <div>Average Wait Time: <span id="avgWaitTime">0</span>s</div>
+      <div>People&nbsp;Waiting: <span id="waitingCount">0</span></div>
+      <div>People&nbsp;Transported: <span id="transportedCount">0</span></div>
+      <div>Average&nbsp;Wait&nbsp;Time: <span id="avgWaitTime">0</span>s</div>
     </div>
 
     <!-- per‑lifter stats -->
     <div class="lifter-stats" id="lifterStats"></div>
 
     <!-- per‑floor summaries -->
-    <div class="floor-stats" style="top:100px">Floor 1: <span id="floor1Stats">0 arrived, 0 departed</span></div>
-    <div class="floor-stats" style="top:180px">Floor 2: <span id="floor2Stats">0 arrived, 0 departed</span></div>
-    <div class="floor-stats" style="top:260px">Floor 3: <span id="floor3Stats">0 arrived, 0 departed</span></div>
+    <div class="floor-stats" style="top:100px">Floor&nbsp;1: <span id="floor1Stats">0 arrived,&nbsp;0 departed</span></div>
+    <div class="floor-stats" style="top:180px">Floor&nbsp;2: <span id="floor2Stats">0 arrived,&nbsp;0 departed</span></div>
+    <div class="floor-stats" style="top:260px">Floor&nbsp;3: <span id="floor3Stats">0 arrived,&nbsp;0 departed</span></div>
 
     <!-- floor lines & labels -->
-    <div class="floor-line"  style="bottom:  80px"></div><div class="floor-label" style="bottom:  85px;color:hsl(  0,70%,60%)">Floor 1</div>
-    <div class="floor-line"  style="bottom: 160px"></div><div class="floor-label" style="bottom: 165px;color:hsl(120,70%,60%)">Floor 2</div>
-    <div class="floor-line"  style="bottom: 240px"></div><div class="floor-label" style="bottom: 245px;color:hsl(240,70%,60%)">Floor 3</div>
+    <div class="floor-line"  style="bottom:  80px"></div><div class="floor-label" style="bottom:  85px;color:hsl(  0,70%,60%)">Floor&nbsp;1</div>
+    <div class="floor-line"  style="bottom: 160px"></div><div class="floor-label" style="bottom: 165px;color:hsl(120,70%,60%)">Floor&nbsp;2</div>
+    <div class="floor-line"  style="bottom: 240px"></div><div class="floor-label" style="bottom: 245px;color:hsl(240,70%,60%)">Floor&nbsp;3</div>
 
     <!-- waiting areas (right) -->
-    <div id="floor-waiting-1" class="floor-waiting" style="position:absolute;bottom: 60px;right:40px;width:120px;height:60px"></div>
+    <div id="floor-waiting-1" class="floor-waiting" style="position:absolute;bottom:60px; right:40px;width:120px;height:60px"></div>
     <div id="floor-waiting-2" class="floor-waiting" style="position:absolute;bottom:140px;right:40px;width:120px;height:60px"></div>
     <div id="floor-waiting-3" class="floor-waiting" style="position:absolute;bottom:220px;right:40px;width:120px;height:60px"></div>
 
-    <!-- elevator shafts -->
+    <!-- elevator bank -->
     <div class="lifter-container" id="lifterContainer"></div>
   </div>
 
   <!-- arrived areas (left) -->
-  <div id="arrived-area-1" style="position:absolute;bottom: 55px;left:40px;width:100px;height:25px;z-index:90"></div>
+  <div id="arrived-area-1" style="position:absolute;bottom:55px; left:40px;width:100px;height:25px;z-index:90"></div>
   <div id="arrived-area-2" style="position:absolute;bottom:135px;left:40px;width:100px;height:25px;z-index:90"></div>
   <div id="arrived-area-3" style="position:absolute;bottom:215px;left:40px;width:100px;height:25px;z-index:90"></div>
 
-  <!-- ======================= JavaScript ======================= -->
+  <!-- ---------------- JavaScript ---------------- -->
   <script>
-    /* ----- Config defaults ----- */
-    let NUM_LIFTERS=3,NUM_FLOORS=3,PERSON_SPAWN_RATE=2000,TOTAL_PEOPLE=100;
-    let BASE_FLOOR_TRAVEL_TIME=2000,BASE_DOOR_OPEN_TIME=1500,BASE_BOARDING_TIME=1200;
+    /* === defaults & runtime vars === */
+    let NUM_LIFTERS=3, NUM_FLOORS=3, PERSON_SPAWN_RATE=2000, TOTAL_PEOPLE=100;
+    let BASE_FLOOR_TRAVEL_TIME=2000, BASE_DOOR_OPEN_TIME=1500, BASE_BOARDING_TIME=1200;
+    let currentSimSpeed=1.0, FLOOR_TRAVEL_TIME=BASE_FLOOR_TRAVEL_TIME,
+        DOOR_OPEN_TIME=BASE_DOOR_OPEN_TIME, BOARDING_TIME=BASE_BOARDING_TIME;
 
-    /* ----- Derived timings ----- */
-    let currentSimSpeed=1.0;
-    let FLOOR_TRAVEL_TIME=BASE_FLOOR_TRAVEL_TIME,DOOR_OPEN_TIME=BASE_DOOR_OPEN_TIME,BOARDING_TIME=BASE_BOARDING_TIME;
-
-    /* ----- Simulation state ----- */
-    let lifters=[],peopleWaiting=Array(NUM_FLOORS).fill().map(()=>[]);
+    let lifters=[], peopleWaiting=Array(NUM_FLOORS).fill().map(()=>[]);
     let peopleTransported=0,totalPeopleSpawned=0,totalWaitTime=0;
-    let simulationInterval,spawnInterval;
-    let isRunning=false,isPaused=false;
-
+    let simulationInterval, spawnInterval, isRunning=false, isPaused=false;
     let floorStats=Array(NUM_FLOORS).fill().map(()=>({arrivedFrom:Array(NUM_FLOORS).fill(0),departed:0}));
 
-    /* ----- Geometry helpers ----- */
+    /* --- positions of platforms per floor (relative to lifter-container) --- */
     const FLOOR_LINE_BASE=80, FLOOR_GAP=80;
     const floorHeights={}; for(let f=1;f<=5;f++) floorHeights[f]=FLOOR_LINE_BASE+(f-1)*FLOOR_GAP;
 
-    /* ----- Build lifters ----- */
+    /* ############################################################## */
+    /*  alignment helper                                              */
+    /* ############################################################## */
+    function alignLiftersToFloor1(){
+      const container=document.getElementById('lifterContainer');
+      const platform =container.querySelector('.platform');
+      const line     =document.querySelector('.floor-line');     // first = Floor&nbsp;1
+      if(!platform||!line)return;
+
+      /* clear any previous shift, then measure fresh */
+      container.style.transform='none';
+      const delta = platform.getBoundingClientRect().bottom - line.getBoundingClientRect().top;
+      container.style.transform=`translateY(${-delta}px)`;
+    }
+    window.addEventListener('load',alignLiftersToFloor1);
+    window.addEventListener('resize',alignLiftersToFloor1);
+
+    /* ############################################################## */
+    /*  build lifts                                                   */
+    /* ############################################################## */
     function initLifters(){
       const c=document.getElementById('lifterContainer'); c.innerHTML='';
       lifters=Array(NUM_LIFTERS).fill().map((_,i)=>{
-        const lift=document.createElement('div');
-        lift.className='lifter';
-        lift.innerHTML=`
-          <div class="lifter-floor" id="floor-indicator-${i}">1</div>
-          <div class="platform" id="platform-${i}">
-            <div class="lifter-passengers"></div>
-          </div>
-          <div class="base"></div>`;
-        c.appendChild(lift);
-        /* place platform at Floor 1 */
+        const d=document.createElement('div');d.className='lifter';
+        d.innerHTML=`<div class="lifter-floor" id="floor-indicator-${i}">1</div>
+                     <div class="platform" id="platform-${i}"><div class="lifter-passengers"></div></div>
+                     <div class="base"></div>`;
+        c.appendChild(d);
         document.getElementById(`platform-${i}`).style.bottom=floorHeights[1]+'px';
         return{
           id:i,element:document.getElementById(`platform-${i}`),
-          passengersContainer:document.getElementById(`platform-${i}`).querySelector('.lifter-passengers'),
+          passengersContainer:d.querySelector('.lifter-passengers'),
           currentFloor:1,targetFloor:1,direction:0,passengers:[],callQueue:[],
           maxCapacity:8,state:'idle',stateTimer:0
         };
       });
+      alignLiftersToFloor1();              // <-- align right after build
     }
 
-    /* ----- Movement, boarding, routing (same as before) ----- */
+    /* ############################################################## */
+    /*  movement / boarding / routing  (same logic as before)         */
+    /* ############################################################## */
     function moveLifter(l,floor){
-      l.direction=Math.sign(floor-l.currentFloor);l.state='moving';l.targetFloor=floor;
+      l.direction=Math.sign(floor-l.currentFloor);
+      l.state='moving';l.targetFloor=floor;
       l.element.style.bottom=floorHeights[floor]+'px';
-      const travel=Math.abs(floor-l.currentFloor)*(FLOOR_TRAVEL_TIME/currentSimSpeed);
+      const t=Math.abs(floor-l.currentFloor)*(FLOOR_TRAVEL_TIME/currentSimSpeed);
       clearTimeout(l.stateTimer);
       l.stateTimer=setTimeout(()=>{
         if(isPaused){l.state='paused';return;}
-        l.currentFloor=floor;l.direction=0;
-        document.getElementById(`floor-indicator-${l.id}`).textContent=floor;
+        l.currentFloor=floor;l.direction=0;document.getElementById(`floor-indicator-${l.id}`).textContent=floor;
         l.state='doors_opening';
         l.stateTimer=setTimeout(()=>{
           if(isPaused){l.state='paused';return;}
           l.state='boarding';processBoarding(l);
         },DOOR_OPEN_TIME/currentSimSpeed);
-      },travel);
+      },t);
     }
 
     function processBoarding(l){
@@ -322,13 +315,24 @@
 
     /* ----- Reset & start/pause ----- */
     function resetSimulationState(){
-      clearInterval(simulationInterval);clearInterval(spawnInterval);lifters.forEach(l=>clearTimeout(l.stateTimer));
-      initLifters();peopleWaiting=Array(NUM_FLOORS).fill().map(()=>[]);peopleTransported=totalPeopleSpawned=totalWaitTime=0;
+      clearInterval(simulationInterval);clearInterval(spawnInterval);
+      lifters.forEach(l=>clearTimeout(l.stateTimer));
+      initLifters();                             // rebuild + align
+      peopleWaiting=Array(NUM_FLOORS).fill().map(()=>[]);
+      peopleTransported=totalPeopleSpawned=totalWaitTime=0;
       floorStats=Array(NUM_FLOORS).fill().map(()=>({arrivedFrom:Array(NUM_FLOORS).fill(0),departed:0}));
-      document.querySelectorAll('.floor-waiting,[id^="arrived-area-"]').forEach(el=>el.innerHTML='');
+      document.querySelectorAll('.floor-waiting,[id^="arrived-area-"]').forEach(e=>e.innerHTML='');
       updateStats();updateFloorStats();updateLifterStats();
     }
-    function resetSimulation(){resetSimulationState();isRunning=isPaused=false;document.getElementById('startPauseResumeBtn').textContent='Start Simulation';document.querySelectorAll('#configControls input:not(#numFloors)').forEach(i=>i.disabled=false);document.getElementById('simSpeed').disabled=false;}
+
+    function resetSimulation(){
+      resetSimulationState();
+      isRunning=isPaused=false;
+      document.getElementById('startPauseResumeBtn').textContent='Start Simulation';
+      document.querySelectorAll('#configControls input:not(#numFloors)').forEach(i=>i.disabled=false);
+      document.getElementById('simSpeed').disabled=false;
+    }
+
     function startSimulation(){
       if(isRunning)return;
       NUM_LIFTERS=+document.getElementById('numLifters').value;TOTAL_PEOPLE=+document.getElementById('totalPeople').value;PERSON_SPAWN_RATE=+document.getElementById('spawnRate').value;
@@ -337,13 +341,16 @@
       spawnInterval=setInterval(spawnPeople,Math.max(50,PERSON_SPAWN_RATE/currentSimSpeed));simulationInterval=setInterval(runSimulation,100);
       document.getElementById('startPauseResumeBtn').textContent='Pause';document.querySelectorAll('#configControls input').forEach(i=>i.disabled=true);
     }
+
     function togglePauseResume(){
       if(!isRunning)return;isPaused=!isPaused;document.getElementById('startPauseResumeBtn').textContent=isPaused?'Resume':'Pause';
       if(isPaused){clearInterval(spawnInterval);}else if(totalPeopleSpawned<TOTAL_PEOPLE){spawnInterval=setInterval(spawnPeople,Math.max(50,PERSON_SPAWN_RATE/currentSimSpeed));}
       lifters.forEach(l=>{if(l.state==='paused')l.state='idle';});updateLifterStats();
     }
 
-    /* ----- Event listeners & init ----- */
+    /* ############################################################## */
+    /*  event listeners & first run                                  */
+    /* ############################################################## */
     document.getElementById('startPauseResumeBtn').addEventListener('click',()=>{if(!isRunning)startSimulation();else togglePauseResume();});
     document.getElementById('resetBtn').addEventListener('click',resetSimulation);
     document.getElementById('simSpeed').addEventListener('input',updateSimulationSpeed);
