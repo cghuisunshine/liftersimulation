@@ -407,7 +407,8 @@
     const FLOOR_GAP       = 80;   // vertical distance between floor lines
 
     function platformBottomFor(floor) {
-      return FLOOR_LINE_BASE + (floor - 1) * FLOOR_GAP - PLATFORM_HEIGHT;
+      /* bottom edge sits right on the floor line, so no subtraction */
+      return FLOOR_LINE_BASE + (floor - 1) * FLOOR_GAP;
     }
 
     const floorHeights = {};      // map: floor → platform bottom (px)
